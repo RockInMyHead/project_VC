@@ -349,12 +349,53 @@ class ApiHandler(SimpleHTTPRequestHandler):
         except workflow.Problem as error: return self._json(error.status,{'error':'request_failed','message':error.message})
         except (OSError,ValueError): return self._json(500,{'error':'upload_failed','message':'Не удалось сохранить файл. Попробуйте снова.'})
 
+    def _upload_avatar(self):
+        try: length=int(self.headers.get('Content-Length','0'))
+        except ValueError: length=0
+        if not 0<length<=2_000_000:
+            return self._json(413,{'error':'file_too_large','message':'Фото должно быть не больше 2 МБ.'})
+        mime_type=self.headers.get('Content-Type','').split(';',1)[0].strip().lower()
+        signatures={
+            'image/jpeg':lambda value:value.startswith(b'\xff\xd8\xff'),
+            'image/png':lambda value:value.startswith(b'\x89PNG\r\n\x1a\n'),
+            'image/webp':lambda value:value.startswith(b'RIFF') and value[8:12]==b'WEBP',
+        }
+        if mime_type not in signatures:
+            return self._json(422,{'error':'invalid_image','message':'Выберите фото в формате JPG, PNG или WebP.'})
+        with closing(connect()) as db:
+            user=self._bearer_user(db)
+            if not user: return self._json(401,{'error':'unauthorized'})
+            image_data=self.rfile.read(length)
+            if len(image_data)!=length or not signatures[mime_type](image_data):
+                return self._json(422,{'error':'invalid_image','message':'Не удалось прочитать фото. Выберите другой файл.'})
+            with transaction(db):
+                db.execute('''INSERT INTO user_avatars(user_id,mime_type,image_data,updated_at) VALUES(?,?,?,?)
+                    ON CONFLICT(user_id) DO UPDATE SET mime_type=excluded.mime_type,image_data=excluded.image_data,updated_at=excluded.updated_at''',
+                    (user['id'],mime_type,image_data,utc_now()))
+                self._audit(db,user['id'],'profile.avatar_updated','user',user['public_id'],{})
+        return self._json(200,{'ok':True})
+
     def do_GET(self):
         path = urlparse(self.path).path
         if path == "/api/health":
             with closing(connect()) as db:
                 ok = db.execute("PRAGMA quick_check").fetchone()[0]
             return self._json(200, {"status": "ok", "database": ok})
+        if path == '/api/profile/avatar':
+            with closing(connect()) as db:
+                user=self._bearer_user(db)
+                if not user: return self._json(401,{'error':'unauthorized'})
+                avatar=db.execute('SELECT mime_type,image_data FROM user_avatars WHERE user_id=?',(user['id'],)).fetchone()
+                if not avatar: return self._json(404,{'error':'not_found','message':'Фото ещё не загружено.'})
+                image_data=avatar['image_data']
+            self.send_response(200)
+            self.send_header('Content-Type',avatar['mime_type'])
+            self.send_header('Content-Length',str(len(image_data)))
+            self.send_header('Cache-Control','private, no-store')
+            self.send_header('X-Content-Type-Options','nosniff')
+            self.end_headers()
+            self.wfile.write(image_data)
+            return
         if path == '/api/founders':
             with closing(connect()) as db:
                 user=self._bearer_user(db)
@@ -512,6 +553,7 @@ class ApiHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
+        if path == '/api/profile/avatar': return self._upload_avatar()
         upload_parts=path.strip('/').split('/')
         if len(upload_parts)==5 and upload_parts[:2]==['api','projects'] and upload_parts[3:]==['materials','upload']:
             return self._upload_material(upload_parts[2])

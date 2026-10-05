@@ -1,4 +1,5 @@
 import base64
+import io
 import json
 import sys
 import tempfile
@@ -310,6 +311,32 @@ class WorkflowTests(unittest.TestCase):
         self.assertTrue(database.verify_password('new-strong-password',self.db.execute('SELECT password_hash FROM users WHERE id=?',(user['id'],)).fetchone()[0]))
         self.assertIsNone(self.db.execute("SELECT revoked_at FROM auth_sessions WHERE public_id='current'").fetchone()[0])
         self.assertIsNotNone(self.db.execute("SELECT revoked_at FROM auth_sessions WHERE public_id='other'").fetchone()[0])
+    def test_profile_avatar_is_saved_and_private(self):
+        image=b'\x89PNG\r\n\x1a\n'+b'avatar-image-data'
+        upload=self.handler('/api/profile/avatar',{},'super_admin')
+        upload.headers={'Content-Type':'image/png','Content-Length':str(len(image))}
+        upload.rfile=io.BytesIO(image)
+        with patch.object(server,'connect',side_effect=lambda:database.connect(self.path)):
+            self.assertEqual(upload.do_POST(),(200,{'ok':True}))
+        self.assertEqual(self.db.execute('SELECT image_data FROM user_avatars WHERE user_id=?',(self.users['super_admin']['id'],)).fetchone()[0],image)
+        download=self.handler('/api/profile/avatar',{},'super_admin')
+        download.wfile=io.BytesIO()
+        headers={}
+        download.send_response=lambda code:headers.update(status=code)
+        download.send_header=lambda name,value:headers.update({name:value})
+        download.end_headers=lambda:None
+        with patch.object(server,'connect',side_effect=lambda:database.connect(self.path)):
+            download.do_GET()
+            self.assertEqual(self.handler('/api/profile/avatar',{},'investor').do_GET()[0],404)
+        self.assertEqual(headers['Content-Type'],'image/png')
+        self.assertEqual(download.wfile.getvalue(),image)
+        anonymous=self.handler('/api/profile/avatar',{})
+        anonymous._bearer_user=lambda db:None
+        with patch.object(server,'connect',side_effect=lambda:database.connect(self.path)):
+            self.assertEqual(anonymous.do_GET()[0],401)
+        upload.headers['Content-Type']='image/svg+xml'
+        upload.rfile=io.BytesIO(image)
+        self.assertEqual(upload.do_POST()[0],422)
     def test_public_login_uses_sms_when_password_only_mode_is_disabled(self):
         h=self.handler('/api/auth/login',{'identity':'founder@example.test','password':'a-strong-test-password'})
         h.headers={'User-Agent':'test'}
