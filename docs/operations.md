@@ -24,7 +24,7 @@ python3 backend/create_admin.py --name 'Имя Фамилия' --email admin@exa
 | BOKOBOK_DB_PATH | Путь к SQLite; /data/bokobok.db в контейнере |
 | BOKOBOK_TRUST_PROXY | 1 только когда приложение доступно исключительно из внутренней сети Caddy; доверять X-Real-IP от частного адреса прокси |
 | SMS_RU_API_ID | Ключ SMS.RU; передаётся контейнеру из .env |
-| BOKOBOK_DISABLE_SMS_2FA | 1 временно разрешает вход по паролю без SMS локально или за доверенным HTTPS-прокси; по умолчанию 0 на сервере. На обычном HTTP не действует. |
+| BOKOBOK_DISABLE_SMS_2FA | 1 временно разрешает вход по паролю без SMS; по умолчанию 0 на сервере. На публичном HTTP пароли передаются без шифрования — настройте HTTPS. |
 | BOKOBOK_LOG_OTP | 1 только локально с host 127.0.0.1; код в серверном логе, не для production |
 | DOMAIN | Домен Caddy для HTTPS |
 

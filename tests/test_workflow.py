@@ -254,7 +254,7 @@ class WorkflowTests(unittest.TestCase):
     def test_sms_fail_closed(self):
         with patch.dict('os.environ',{},clear=True):
             with self.assertRaises(sms.DeliveryError):sms.send_code('+79990000000','123456','test')
-    def test_local_password_login_skips_sms_but_public_bind_does_not(self):
+    def test_password_login_skips_sms_when_explicitly_disabled(self):
         h=self.handler('/api/auth/login',{'identity':'founder@example.test','password':'a-strong-test-password'})
         h.headers={'User-Agent':'test'}
         with patch.object(server,'connect',side_effect=lambda:database.connect(self.path)), patch.dict('os.environ',{'BOKOBOK_HOST':'127.0.0.1','BOKOBOK_DISABLE_SMS_2FA':'1'}), patch.object(server,'send_code') as send:
@@ -269,9 +269,8 @@ class WorkflowTests(unittest.TestCase):
         with patch.object(server,'connect',side_effect=lambda:database.connect(self.path)), patch.dict('os.environ',{'BOKOBOK_HOST':'0.0.0.0','BOKOBOK_DISABLE_SMS_2FA':'1'}), patch.object(server,'send_code') as send:
             status,result=h.do_POST()
         self.assertEqual(status,200)
-        self.assertIn('challenge_id',result)
-        self.assertNotIn('token',result)
-        send.assert_called_once()
+        self.assertIn('token',result)
+        send.assert_not_called()
     def test_profile_updates_password_and_revokes_other_sessions(self):
         user=self.users['founder']
         for sid,token in [('current','current-token'),('other','other-token')]:
@@ -297,16 +296,10 @@ class WorkflowTests(unittest.TestCase):
         self.assertTrue(database.verify_password('new-strong-password',self.db.execute('SELECT password_hash FROM users WHERE id=?',(user['id'],)).fetchone()[0]))
         self.assertIsNone(self.db.execute("SELECT revoked_at FROM auth_sessions WHERE public_id='current'").fetchone()[0])
         self.assertIsNotNone(self.db.execute("SELECT revoked_at FROM auth_sessions WHERE public_id='other'").fetchone()[0])
-    def test_password_only_login_requires_trusted_https_proxy_on_public_bind(self):
+    def test_public_login_uses_sms_when_password_only_mode_is_disabled(self):
         h=self.handler('/api/auth/login',{'identity':'founder@example.test','password':'a-strong-test-password'})
-        h.headers={'User-Agent':'test','X-Forwarded-Proto':'https'}
-        env={'BOKOBOK_HOST':'0.0.0.0','BOKOBOK_DISABLE_SMS_2FA':'1','BOKOBOK_TRUST_PROXY':'1'}
-        with patch.object(server,'connect',side_effect=lambda:database.connect(self.path)), patch.dict('os.environ',env), patch.object(server,'send_code') as send:
-            status,result=h.do_POST()
-        self.assertEqual(status,200)
-        self.assertIn('token',result)
-        send.assert_not_called()
-        h.client_address=('203.0.113.10',0)
+        h.headers={'User-Agent':'test'}
+        env={'BOKOBOK_HOST':'0.0.0.0','BOKOBOK_DISABLE_SMS_2FA':'0'}
         with patch.object(server,'connect',side_effect=lambda:database.connect(self.path)), patch.dict('os.environ',env), patch.object(server,'send_code') as send:
             status,result=h.do_POST()
         self.assertEqual(status,200)

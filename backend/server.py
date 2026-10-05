@@ -568,14 +568,9 @@ class ApiHandler(SimpleHTTPRequestHandler):
                 if not user or not verify_password(str(data.get("password", "")), user["password_hash"]):
                     self._audit(db, None, "auth.login_failed", "user", None, {"identity": data.get("identity", "")})
                     return self._json(401, {"error": "invalid_credentials", "message": "Неверный email, телефон или пароль."})
-                # Password-only mode is allowed locally or behind the trusted HTTPS proxy.
                 local_host = os.environ.get("BOKOBOK_HOST", "127.0.0.1") in ("127.0.0.1", "localhost", "::1")
-                proxy_peer = ipaddress.ip_address(self.client_address[0])
-                trusted_https = (os.environ.get('BOKOBOK_TRUST_PROXY') == '1'
-                                 and any(proxy_peer in network for network in PROXY_PEER_RANGES)
-                                 and self.headers.get('X-Forwarded-Proto') == 'https')
                 password_only = os.environ.get("BOKOBOK_DISABLE_SMS_2FA", "1" if local_host else "0") == "1"
-                if not user['phone'] or (password_only and (local_host or trusted_https)):
+                if not user['phone'] or password_only:
                     with transaction(db):
                         raw_token = secrets.token_urlsafe(32)
                         session_id = public_id("ses")
