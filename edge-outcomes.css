@@ -1,0 +1,19 @@
+.matrix28{--edge-success:#258653;--edge-failure:#c94b4b;--edge-inconclusive:#b47a24;--edge-pending:#9da99b}
+.matrix28 .mx-map path.mx-edge{fill:none;vector-effect:non-scaling-stroke;opacity:1;filter:none;stroke-width:3;stroke-linecap:round}
+.matrix28 .mx-map path.mx-edge.edge-success{stroke:var(--edge-success)}
+.matrix28 .mx-map path.mx-edge.edge-failure{stroke:var(--edge-failure)}
+.matrix28 .mx-map path.mx-edge.edge-inconclusive{stroke:var(--edge-inconclusive);stroke-dasharray:7 5}
+.matrix28 .mx-map path.mx-edge.edge-pending{stroke:var(--edge-pending);stroke-width:2;stroke-dasharray:5 7}
+.matrix28 .mx-map path.mx-edge.edge-selected{stroke-width:4.5}
+.matrix28 .mx-node.outcome-success .mx-node-dot,.matrix28 .mx-node.outcome-success.selected .mx-node-dot{background:var(--edge-success);color:#fff;box-shadow:0 0 0 5px #2586532b}
+.matrix28 .mx-node.outcome-failure .mx-node-dot,.matrix28 .mx-node.outcome-failure.selected .mx-node-dot{background:var(--edge-failure);color:#fff;box-shadow:0 0 0 5px #c94b4b2b}
+.matrix28 .mx-node.outcome-inconclusive .mx-node-dot,.matrix28 .mx-node.outcome-inconclusive.selected .mx-node-dot{background:var(--edge-inconclusive);color:#fff;box-shadow:0 0 0 5px #b47a242b}
+.matrix28 .mx-node.outcome-success .mx-node-text{border-left:3px solid var(--edge-success)}
+.matrix28 .mx-node.outcome-failure .mx-node-text{border-left:3px solid var(--edge-failure)}
+.matrix28 .mx-node.outcome-inconclusive .mx-node-text{border-left:3px solid var(--edge-inconclusive)}
+.mx-edge-legend{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;padding:12px 18px;color:var(--palette-muted);font-size:12px}
+.mx-edge-legend-item{display:inline-flex;gap:8px;align-items:center;white-space:nowrap}
+.mx-edge-swatch{display:inline-block;width:27px;height:0;border-top:3px solid}
+.mx-edge-swatch.success{border-color:#258653}.mx-edge-swatch.failure{border-color:#c94b4b}.mx-edge-swatch.inconclusive{border-color:#b47a24;border-top-style:dashed}.mx-edge-swatch.pending{border-color:#9da99b;border-top-style:dashed}
+html[data-theme="dark"] .matrix28{--edge-success:#62c988;--edge-failure:#f17873;--edge-inconclusive:#ebbd67;--edge-pending:#859587}
+html[data-theme="dark"] .mx-edge-swatch.success{border-color:#62c988}html[data-theme="dark"] .mx-edge-swatch.failure{border-color:#f17873}html[data-theme="dark"] .mx-edge-swatch.inconclusive{border-color:#ebbd67}html[data-theme="dark"] .mx-edge-swatch.pending{border-color:#859587}

@@ -39,7 +39,7 @@ def get_project(db,user,pid):
     require(user, 'Войдите в систему.',401)
     p=db.execute('SELECT * FROM projects WHERE public_id=? OR slug=?',(pid,pid)).fetchone()
     require(p is not None,'Проект не найден.',404)
-    visible=private_visible(db,user,p) or user['role_code']=='investor' and p['status'] in ('active','paused','completed') and db.execute("SELECT 1 FROM tree_versions WHERE project_id=? AND state='published'",(p['id'],)).fetchone()
+    visible=private_visible(db,user,p) or p['status'] in ('active','paused','completed') and db.execute("SELECT 1 FROM tree_versions WHERE project_id=? AND state='published'",(p['id'],)).fetchone()
     require(visible,'Проект не найден или недоступен.',404)
     return p
 
@@ -96,6 +96,25 @@ def project_list(db,user):
         item.update(dict(db.execute("SELECT COUNT(*) stage_count,COALESCE(SUM(status='completed'),0) completed_stage_count,COALESCE(ROUND(AVG(progress)),0) average_progress FROM stages WHERE tree_version_id=?",(v['id'],)).fetchone()))
         result.append(item)
     return {'items':result}
+
+def project_comparison_list(db,user):
+    require(user,'Войдите в систему.',401)
+    items=project_list(db,user)['items']
+    known={item['public_id'] for item in items}
+    for p in db.execute("SELECT * FROM projects WHERE status IN ('active','paused','completed') ORDER BY updated_at DESC"):
+        if p['public_id'] in known: continue
+        v=version(db,p,False)
+        if not v: continue
+        items.append({
+            'public_id':p['public_id'],'code':p['code'],'name':p['name'],
+            'summary':p['summary'],'field':p['field'],'region':p['region'],
+            'status':p['status'],'ugt_level':p['ugt_level'],'updated_at':p['updated_at'],
+            'last_published_at':p['last_published_at'],'review_state':'published',
+            'stage_count':db.execute('SELECT COUNT(*) FROM stages WHERE tree_version_id=?',(v['id'],)).fetchone()[0],
+            'completed_stage_count':db.execute("SELECT COUNT(*) FROM stages WHERE tree_version_id=? AND status='completed'",(v['id'],)).fetchone()[0],
+        })
+        known.add(p['public_id'])
+    return {'items':items}
 
 def founder_changes(db,user,query=''):
     require(user and user['role_code']=='founder','У вас нет доступа к истории изменений.',403)

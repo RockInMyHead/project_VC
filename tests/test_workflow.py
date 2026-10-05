@@ -63,6 +63,20 @@ class WorkflowTests(unittest.TestCase):
             self.assertEqual(w.project_list(self.db,self.users[role])['items'],[])
         self.assertTrue(self.detail('founder')['can_edit']);self.assertTrue(self.detail('fund_staff')['can_review'])
         with self.assertRaises(w.Problem): self.cmd('founder','publish')
+    def test_comparison_includes_other_published_projects_only(self):
+        other_id=w.user_create(self.db,{'role':'founder','full_name':'Second founder','email':'second@example.test','phone':'+79995554433','password':'a-strong-test-password'})
+        other=self.db.execute('SELECT u.*,r.code role_code FROM users u JOIN roles r ON r.id=u.role_id WHERE u.public_id=?',(other_id,)).fetchone()
+        own=server.create_founder_project(self.db,other,{'code':'SECOND','name':'Second project','summary':'Summary','description':'Description','field':'Physics','ugt_level':2,'stages':[{'id':1,'title':'Second stage','status':'planned','ugt_level':1}]})
+        self.assertEqual([item['public_id'] for item in w.project_comparison_list(self.db,other)['items']],[own['public_id']])
+        with self.assertRaises(w.Problem):w.project_detail(self.db,other,self.pid)
+        self.publish()
+        comparable=w.project_comparison_list(self.db,other)['items']
+        self.assertEqual({item['public_id'] for item in comparable},{own['public_id'],self.pid})
+        self.assertEqual([item['public_id'] for item in w.project_list(self.db,other)['items']],[own['public_id']])
+        self.assertEqual(w.project_detail(self.db,other,self.pid)['tree_version']['state'],'published')
+        handler=self.handler('/api/projects/comparison',{},'founder')
+        with patch.object(server,'connect',side_effect=lambda:database.connect(self.path)):
+            self.assertEqual(handler.do_GET()[0],200)
     def test_team_access_and_removal(self):
         uid=w.user_create(self.db,{'role':'founder','full_name':'Researcher','email':'researcher@example.test','phone':'+79991112233','password':'a-strong-test-password'})
         researcher=self.db.execute('SELECT u.*,r.code role_code FROM users u JOIN roles r ON r.id=u.role_id WHERE u.public_id=?',(uid,)).fetchone()
@@ -256,6 +270,18 @@ class WorkflowTests(unittest.TestCase):
         h._body=lambda:{**payload,'body':'Другой текст'}
         with patch.object(server,'connect',side_effect=lambda:database.connect(self.path)):
             self.assertEqual(h.do_POST()[0],409)
+    def test_admin_can_exchange_messages_with_founder(self):
+        admin_id=self.users['super_admin']['public_id']
+        founder_id=self.users['founder']['public_id']
+        with patch.object(server,'connect',side_effect=lambda:database.connect(self.path)):
+            admin_contacts=self.handler('/api/messages/contacts',{},'super_admin').do_GET()
+            founder_contacts=self.handler('/api/messages/contacts',{},'founder').do_GET()
+            self.assertIn(founder_id,[item['public_id'] for item in admin_contacts[1]['items']])
+            self.assertIn(admin_id,[item['public_id'] for item in founder_contacts[1]['items']])
+            self.assertEqual(self.handler('/api/messages',{'recipient_id':founder_id,'body':'Здравствуйте','request_key':'admin-message'},'super_admin').do_POST()[0],201)
+            self.assertEqual(self.handler('/api/messages',{'recipient_id':admin_id,'body':'Добрый день','request_key':'founder-reply'},'founder').do_POST()[0],201)
+            conversation=self.handler('/api/messages/'+founder_id,{},'super_admin').do_GET()
+        self.assertEqual([item['body'] for item in conversation[1]['items']],['Здравствуйте','Добрый день'])
     def test_otp_attempts_consumption_and_last_login(self):
         uid=self.users['founder']['id'];self.db.execute("INSERT INTO otp_challenges(public_id,user_id,purpose,code_hash,expires_at) VALUES('test',?,'login',?,'2099-01-01T00:00:00Z')",(uid,database.hash_token('123456')))
         h=self.handler('/api/auth/verify-otp',{'challenge_id':'test','code':'000000'})

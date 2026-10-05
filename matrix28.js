@@ -76,14 +76,13 @@ const Matrix28 = (() => {
     const eras=el('div','mx-eras');
     const dated=stages.map(s=>dt(s.due_at)||dt(s.completed_at)).filter(Boolean).sort((a,b)=>a-b);
     [['ПРОШЛОЕ',dated.length?dated[0].getFullYear()+' — '+(new Date().getFullYear()):'Завершённые этапы'],['ТЕКУЩИЕ ИССЛЕДОВАНИЯ',label(center)],['БУДУЩЕЕ',dated.length?label(dated.at(-1)):'План развития']].forEach(([a,b],i)=>{const x=el('div',i===1?'active':'');x.append(el('b','',a),el('span','',b));eras.append(x);});
-    const treeLayout=layout(stages);let mapHeight=treeLayout.height,mapWidth=treeLayout.width,savingPosition=false;
+    const treeLayout=layout(stages);let mapHeight=treeLayout.height,mapWidth=treeLayout.width;
     const mapScroll=el('div','mx-map-scroll'),map=el('div','mx-map'),lane=el('div','mx-lane'),lines=svg('svg',{viewBox:`0 0 ${mapWidth} ${mapHeight}`,preserveAspectRatio:'none','aria-hidden':'true'});
     mapScroll.tabIndex=0;mapScroll.setAttribute('aria-label','Дерево решений. Прокручивается по вертикали и горизонтали.');
     map.style.height=mapHeight+'px';
     map.style.width=mapWidth+'px';map.style.minWidth=mapWidth+'px';eras.hidden=true;
     let zoom=1;
     const surface=el('div','mx-map-surface'),zoomBar=el('div','mx-zoom-bar');
-    const positionFeedback=el('span','mx-position-feedback','');positionFeedback.setAttribute('role','status');
     const changeZoom=value=>{setZoom(value);scrollToSelected();};
     const zoomOut=btn('−','',()=>changeZoom(zoom/1.2)),zoomValue=btn('100%','mx-zoom-value',()=>changeZoom(1)),zoomIn=btn('+','',()=>changeZoom(zoom*1.2));
     zoomOut.setAttribute('aria-label','Уменьшить масштаб дерева');zoomIn.setAttribute('aria-label','Увеличить масштаб дерева');zoomValue.setAttribute('aria-label','Вернуть масштаб 100%');
@@ -91,7 +90,7 @@ const Matrix28 = (() => {
       const viewportHeight=window.innerWidth<=760?520:window.innerWidth<=1050?580:Math.min(640,window.innerHeight*.7);
       setZoom(Math.min(1,(mapScroll.clientWidth-28)/mapWidth,(viewportHeight-28)/mapHeight));
       mapScroll.scrollLeft=0;mapScroll.scrollTop=0;
-    }),positionFeedback,el('span','mx-zoom-hint','Ctrl / ⌘ + колесо'));
+    }),el('span','mx-zoom-hint','Ctrl / ⌘ + колесо'));
     function setZoom(value,anchor){
       const next=Math.max(.05,Math.min(2,value));
       const x=anchor?.x??mapScroll.clientWidth/2,y=anchor?.y??mapScroll.clientHeight/2;
@@ -112,7 +111,10 @@ const Matrix28 = (() => {
       if(!['+','=','-','0'].includes(event.key))return;
       event.preventDefault();setZoom(event.key==='0'?1:zoom*(event.key==='-'?1/1.2:1.2));
     });
-    map.append(lane,lines);surface.append(map);mapScroll.append(surface);graph.append(graphHeader,eras,zoomBar,mapScroll,el('p','mx-map-note','● Завершено　 ● В работе　 ◌ Сценарий'));
+    map.append(lane,lines);surface.append(map);mapScroll.append(surface);
+    const edgeLegend=el('div','mx-edge-legend');edgeLegend.setAttribute('aria-label','Итоги переходов');
+    [['success','Успешно'],['failure','Неуспешно'],['inconclusive','Неопределённо'],['pending','Без итога']].forEach(([kind,label])=>{const item=el('span','mx-edge-legend-item');item.append(el('i','mx-edge-swatch '+kind),el('span','',label));edgeLegend.append(item);});
+    graph.append(graphHeader,eras,zoomBar,mapScroll,edgeLegend);
     setZoom(1);
     primary.append(graph,inspector);
     const ugtScale=el('section','mx-ugt-scale mx-ugt-simple'),ugtSteps=el('div','mx-ugt-steps');
@@ -159,24 +161,6 @@ const Matrix28 = (() => {
       surface.style.width=mapWidth*zoom+'px';surface.style.height=mapHeight*zoom+'px';
       mapScroll.style.setProperty('--mx-content-height',Math.ceil(mapHeight*zoom+2)+'px');
     }
-    async function savePosition(stage,before){
-      savingPosition=true;positionFeedback.textContent='Сохранение…';const point=coordinates().get(stage.public_id);
-      try{
-        await api(`/api/projects/${project.public_id}/stage-position`,{method:'POST',body:JSON.stringify({stage_id:stage.public_id,map_x:Math.round(point.x),map_y:Math.round(point.y),revision:data.tree_version.revision,request_key:newRequestKey()})});
-        data.tree_version.revision++;stage.map_x=Math.round(point.x);stage.map_y=Math.round(point.y);
-        positionFeedback.textContent='Положение сохранено';
-      }catch(error){positionFeedback.textContent='Не сохранено';coordinates().set(stage.public_id,before);resizeMap();drawGraph();const toast=document.querySelector('#toast');toast.textContent=error.message;toast.classList.add('visible');}
-      finally{savingPosition=false;}
-    }
-    function startNodeDrag(event,stage){
-      if(event.button!==0||savingPosition)return;
-      event.preventDefault();event.stopPropagation();
-      const point=coordinates().get(stage.public_id),before={...point},start={x:event.clientX,y:event.clientY};let moved=false;
-      const move=e=>{const dx=(e.clientX-start.x)/zoom,dy=(e.clientY-start.y)/zoom;if(Math.abs(dx)+Math.abs(dy)<3&&!moved)return;moved=true;point.x=Math.max(35,Math.min(50000,before.x+dx));point.y=Math.max(35,Math.min(50000,before.y+dy));resizeMap();drawGraph();};
-      const finish=e=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',finish);window.removeEventListener('pointercancel',cancel);if(moved)savePosition(stage,before);};
-      const cancel=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',finish);window.removeEventListener('pointercancel',cancel);coordinates().set(stage.public_id,before);resizeMap();drawGraph();};
-      window.addEventListener('pointermove',move);window.addEventListener('pointerup',finish,{once:true});window.addEventListener('pointercancel',cancel,{once:true});
-    }
     function drawGraph(){
       map.querySelectorAll('.mx-node,.mx-root,.mx-empty').forEach(x=>x.remove());lines.replaceChildren();
       const points=coordinates(),root={x:95,y:mapHeight/2},origin=el('div','mx-root');
@@ -185,13 +169,13 @@ const Matrix28 = (() => {
       const countWord=stages.length%100>=11&&stages.length%100<=14?'событий':stages.length%10===1?'событие':stages.length%10>=2&&stages.length%10<=4?'события':'событий';
       origin.append(el('span','mx-root-dot','0'),el('strong','',project.code),el('small','',stages.length+' '+countWord));map.append(origin);
       stages.forEach(s=>{if(filter!=='all'&&filter!==s.status)return;const p=points.get(s.public_id);if(!p)return;const parent=points.get(s.parent_public_id)||root,bend=Math.max(35,(p.x-parent.x)*.45);
-        lines.append(svg('path',{d:'M '+parent.x+' '+parent.y+' C '+(parent.x+bend)+' '+parent.y+', '+(p.x-bend)+' '+p.y+', '+p.x+' '+p.y,class:s.status==='in_progress'||s.public_id===selected?.public_id?'active':'muted'}));
+        const edgeOutcome=['success','failure','inconclusive'].includes(s.outcome)?s.outcome:'pending';
+        lines.append(svg('path',{d:'M '+parent.x+' '+parent.y+' C '+(parent.x+bend)+' '+parent.y+', '+(p.x-bend)+' '+p.y+', '+p.x+' '+p.y,class:`mx-edge edge-${edgeOutcome}${s.public_id===selected?.public_id?' edge-selected':''}`}));
         const dim=query&&!((s.title||'')+' '+(s.description||'')).toLowerCase().includes(query);
         const selectStage=event=>{const keyboard=event?.detail===0;selected=s;center=stageDate(s)||center;draw();scrollToSelected();if(keyboard)[...map.querySelectorAll('.mx-node-dot')].find(button=>button.dataset.stageId===s.public_id)?.focus();};
-        const n=el('div','mx-node '+s.status+(selected?.public_id===s.public_id?' selected':'')+(dim?' dimmed':''));
+        const n=el('div','mx-node '+s.status+' outcome-'+edgeOutcome+(selected?.public_id===s.public_id?' selected':'')+(dim?' dimmed':''));
         n.style.left=p.x/mapWidth*100+'%';n.style.top=p.y/mapHeight*100+'%';n.setAttribute('role','group');n.setAttribute('aria-label',s.title+', '+state[s.status]);
         const caption=el('div','mx-node-text');
-        if(data.can_edit){const handle=btn('⠿','mx-node-drag',()=>{});handle.setAttribute('aria-label',`Переместить событие D${s.position}: перетащите или используйте стрелки`);handle.title='Перетащите узел';handle.onpointerdown=e=>startNodeDrag(e,s);handle.onkeydown=e=>{const delta={ArrowLeft:[-10,0],ArrowRight:[10,0],ArrowUp:[0,-10],ArrowDown:[0,10]}[e.key];if(!delta||savingPosition)return;e.preventDefault();const p=points.get(s.public_id),before={...p};p.x=Math.max(35,Math.min(50000,p.x+delta[0]));p.y=Math.max(35,Math.min(50000,p.y+delta[1]));resizeMap();drawGraph();savePosition(s,before);map.querySelector(`[data-drag-id="${s.public_id}"]`)?.focus();};handle.dataset.dragId=s.public_id;caption.append(handle);}
         caption.append(el('small','mx-node-code','D'+(s.position||'·')+' · '+(stageDate(s)?.getFullYear()||'без даты')),el('strong','',s.title),el('small','mx-node-description',s.description||state[s.status]));
         if(s.outcome)caption.append(el('small','mx-event-outcome '+s.outcome,{success:'Успешно',failure:'Неуспешно',inconclusive:'Неопределённо'}[s.outcome]));
         if(s.status==='in_progress'){

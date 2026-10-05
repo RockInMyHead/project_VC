@@ -1,5 +1,6 @@
 const $=(s,p=document)=>p.querySelector(s),$$=(s,p=document)=>[...p.querySelectorAll(s)];let users=[],registrations=[],projects=[],audit=[],auditCursor=null,auditShown=0,auditRequest=0;
 document.getElementById('adminProfile').onclick=()=>{location.href='./index.html#profile';};
+document.getElementById('adminMessages').onclick=()=>{location.href='./index.html#messages';};
 const roleNames={investor:'Инвестор',founder:'Основатель проекта',fund_staff:'Сотрудник фонда',super_admin:'Главный администратор'};
 const accessNames={active:'Активен',blocked:'Заблокирован',archived:'В архиве',invited:'Приглашён',pending:'Ожидает решения',approved:'Одобрена',rejected:'Отклонена'};
 const {el,btn,dialog,run}=WorkflowUI;

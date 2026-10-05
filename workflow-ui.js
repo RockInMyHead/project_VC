@@ -41,13 +41,26 @@ const WorkflowUI = (() => {
     return d;
   }
   const command=async(data,action,values={},key=newRequestKey())=>{await api(`/api/projects/${data.project.public_id}/${action}`,{method:'POST',body:JSON.stringify({...values,revision:data.tree_version?.revision,request_key:key})});await refreshProjectView(data.project.public_id);};
-  async function uploadMaterial(projectId,stageId,file){
-    let response;
-    try{response=await fetch(`/api/projects/${encodeURIComponent(projectId)}/materials/upload`,{method:'POST',headers:{Authorization:`Bearer ${localStorage.getItem('bokToken')}`,'Content-Type':file.type||'application/octet-stream','X-Stage-Id':stageId,'X-File-Name':encodeURIComponent(file.name)},body:file});}
-    catch{throw new Error(`Не удалось загрузить «${file.name}». Проверьте соединение и повторите.`);}
-    const result=await response.json().catch(()=>({}));
-    if(!response.ok)throw new Error(result.message||`Не удалось загрузить «${file.name}».`);
-    return result;
+  function uploadMaterial(projectId,stageId,file,onProgress=()=>{},signal){
+    return new Promise((resolve,reject)=>{
+      const xhr=new XMLHttpRequest();
+      const failed=message=>reject(new Error(message||`Не удалось загрузить «${file.name}».`));
+      xhr.open('POST',`/api/projects/${encodeURIComponent(projectId)}/materials/upload`);
+      xhr.setRequestHeader('Authorization',`Bearer ${localStorage.getItem('bokToken')}`);
+      xhr.setRequestHeader('Content-Type',file.type||'application/octet-stream');
+      xhr.setRequestHeader('X-Stage-Id',stageId);
+      xhr.setRequestHeader('X-File-Name',encodeURIComponent(file.name));
+      xhr.upload.onprogress=event=>onProgress(event.lengthComputable?Math.min(99,Math.round(event.loaded/event.total*100)):null);
+      xhr.onload=()=>{
+        let result={};try{result=JSON.parse(xhr.responseText||'{}');}catch{}
+        if(xhr.status<200||xhr.status>=300)return failed(result.message);
+        onProgress(100);resolve(result);
+      };
+      xhr.onerror=()=>failed(`Не удалось загрузить «${file.name}». Проверьте соединение и повторите.`);
+      xhr.onabort=()=>failed('Загрузка отменена.');
+      if(signal){if(signal.aborted)return failed('Загрузка отменена.');signal.addEventListener('abort',()=>xhr.abort(),{once:true});}
+      xhr.send(file);
+    });
   }
   function controls(host,data) {
     const bar=el('div',undefined,'workflow-bar');bar.append(el('span',`${states[data.tree_version?.state]||'Нет версии'} · Версия ${data.tree_version?.version_number||1}`));
@@ -83,7 +96,28 @@ const WorkflowUI = (() => {
   function stageActions(host,data,s){if(!data.can_edit)return;const row=el('div',undefined,'workflow-buttons');row.append(btn('Изменить',()=>stage(data,s)),btn('Удалить',()=>dialog('Удалить этап? Дочерние этапы сохранятся.',[],(v,k)=>command(data,'stage-delete',{stage_id:s.public_id},k),'Удалить')));host.append(row);}
   async function download(data,m){const response=await fetch(`/api/projects/${data.project.public_id}/materials/${m.public_id}/download`,{headers:{Authorization:`Bearer ${localStorage.getItem('bokToken')}`}});if(!response.ok){const error=await response.json().catch(()=>({}));throw new Error(error.message||'Не удалось скачать файл.');}const url=URL.createObjectURL(await response.blob());const a=el('a');a.href=url;a.download=m.title;a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);}
   function materials(host,data){
-    if(data.can_edit)host.append(btn('Добавить файл',()=>dialog('Материал к этапу (до 50 МБ)',[{name:'stage_id',label:'Этап',options:data.stages.map(s=>[s.public_id,s.title]),required:true},{name:'file',label:'Файл',type:'file',required:true}],async(v)=>{if(v.file.size>50_000_000)throw new Error('Максимальный размер файла — 50 МБ.');await uploadMaterial(data.project.public_id,v.stage_id,v.file);await refreshProjectView(data.project.public_id);},'Загрузить')));
+    if(data.can_edit)host.append(btn('Добавить файл',()=>{
+      const controller=new AbortController();
+      const d=dialog('Материал к этапу (до 50 МБ)',[{name:'stage_id',label:'Этап',options:data.stages.map(s=>[s.public_id,s.title]),required:true},{name:'file',label:'Файл',type:'file',required:true}],async(v)=>{
+        if(!v.file?.size)throw new Error('Выберите файл для загрузки.');
+        if(v.file.size>50_000_000)throw new Error('Максимальный размер файла — 50 МБ.');
+        progressBox.hidden=false;progress.value=0;progressText.textContent='Подготовка файла…';
+        await uploadMaterial(data.project.public_id,v.stage_id,v.file,value=>{
+          progress.removeAttribute('value');
+          if(value!==null){progress.value=value;progressText.textContent=value===100?'Файл загружен. Обновляем список…':`Загружено ${value}%`;}
+          else progressText.textContent='Загружаем файл…';
+        },controller.signal);
+        const updated=await api(`/api/projects/${encodeURIComponent(data.project.public_id)}`);
+        host.replaceChildren();materials(host,updated);
+        host.prepend(el('p',`Файл «${v.file.name}» добавлен.`, 'workflow-upload-success'));
+      },'Загрузить');
+      const progressBox=el('div',undefined,'workflow-upload-progress');progressBox.hidden=true;
+      const progressText=el('span','Подготовка файла…');progressText.setAttribute('role','status');
+      const progress=el('progress');progress.max=100;progress.value=0;
+      progressBox.append(progressText,progress);
+      d.querySelector('.focus-form-error').before(progressBox);
+      d.addEventListener('close',()=>controller.abort(),{once:true});
+    }));
     if(!data.materials.length)host.append(el('p','Материалов пока нет.'));
     data.materials.forEach(m=>{const row=el('div',undefined,'workflow-row');row.append(el('span',`${m.title} · ${Math.ceil(m.byte_size/1024)} КБ`),btn('Скачать',()=>run(()=>download(data,m))));if(data.can_edit)row.append(btn('Удалить',()=>dialog('Удалить материал?',[],(v,k)=>command(data,'material-delete',{material_id:m.public_id},k),'Удалить')));host.append(row);});
   }

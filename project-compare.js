@@ -133,7 +133,7 @@ const ProjectCompare = (() => {
     host.append(heading, picker, status, graphs);
 
     let items;
-    try { ({items} = await api('/api/projects')); }
+    try { ({items} = await api('/api/projects/comparison')); }
     catch (error) { status.textContent = error.message; return; }
     if (!host.isConnected || host.hidden) return;
     if (!items.length) { status.textContent = 'Пока нет доступных проектов для сравнения.'; return; }
@@ -166,7 +166,7 @@ const ProjectCompare = (() => {
         const result = results[index];
         graphs.append(result.error ? el('p', 'compare-error', `${project.name}: ${result.error.message}`) : graph(project, result, openProject));
       });
-      status.textContent = `${chosen.length} ${chosen.length === 1 ? 'проект' : chosen.length < 5 ? 'проекта' : 'проектов'} · нажмите на номер события, чтобы открыть карточку`;
+      status.textContent = `${chosen.length} ${chosen.length === 1 ? 'проект' : chosen.length < 5 ? 'проекта' : 'проектов'} · нажмите на номер события, чтобы открыть карточку${items.length===1?' · другие проекты появятся после публикации':''}`;
     }
     items.forEach(project => {
       const label = el('label', 'compare-option');
@@ -179,7 +179,7 @@ const ProjectCompare = (() => {
         updatePicker();
         draw();
       });
-      label.append(input, el('span', '', project.name));
+      label.append(input, el('span', '', `${project.code} · ${project.name}`));
       picker.append(label);
     });
     updatePicker();

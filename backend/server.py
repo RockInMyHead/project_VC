@@ -409,6 +409,7 @@ class ApiHandler(SimpleHTTPRequestHandler):
                 try:
                     workflow.require(user, 'Войдите в систему.', 401)
                     if path == '/api/projects': return self._json(200, workflow.project_list(db,user))
+                    if path == '/api/projects/comparison': return self._json(200, workflow.project_comparison_list(db,user))
                     if path == '/api/changes': return self._json(200, workflow.founder_changes(db,user,urlparse(self.path).query))
                     if path == '/api/notifications':
                         return self._json(200, {'items':[dict(r) for r in db.execute('SELECT public_id,title,body,entity_public_id,read_at,created_at FROM notifications WHERE user_id=? ORDER BY id DESC LIMIT 200',(user['id'],))]})
@@ -467,7 +468,7 @@ class ApiHandler(SimpleHTTPRequestHandler):
                         (m.sender_id=u.id AND m.recipient_id=?)) AS last_message_at,
                       (SELECT COUNT(*) FROM direct_messages m WHERE m.sender_id=u.id AND m.recipient_id=? AND m.read_at IS NULL) AS unread_count
                     FROM users u JOIN roles r ON r.id=u.role_id
-                    WHERE u.id!=? AND u.status='active' AND r.code!='super_admin'
+                    WHERE u.id!=? AND u.status='active'
                     ORDER BY last_message_at DESC,u.full_name COLLATE NOCASE
                 """, (user["id"], user["id"], user["id"], user["id"], user["id"], user["id"])).fetchall()
             return self._json(200, {"items": [dict(row) for row in rows]})
@@ -709,7 +710,7 @@ class ApiHandler(SimpleHTTPRequestHandler):
                 user = self._bearer_user(db)
                 if not user:
                     return self._json(401, {"error": "unauthorized"})
-                recipient = db.execute("SELECT id FROM users WHERE public_id=? AND id!=? AND status='active' AND role_id!=(SELECT id FROM roles WHERE code='super_admin')", (data.get("recipient_id"),user["id"])).fetchone()
+                recipient = db.execute("SELECT id FROM users WHERE public_id=? AND id!=? AND status='active'", (data.get("recipient_id"),user["id"])).fetchone()
                 body = str(data.get("body", "")).strip()
                 if not recipient or not 1 <= len(body) <= 4000:
                     return self._json(422, {"error": "validation_failed", "message": "Выберите собеседника и введите сообщение до 4000 символов."})

@@ -924,7 +924,7 @@ async function restore() {
   if (!localStorage.getItem('bokToken')) return;
   try {
     const { user } = await api('/api/auth/me');
-    if (user.role === 'super_admin' && !location.hash.startsWith('#project/')&&!location.hash.startsWith('#event/')&&location.hash!=='#profile') return location.replace('./admin.html');
+    if (user.role === 'super_admin' && !location.hash.startsWith('#project/')&&!location.hash.startsWith('#event/')&&!['#profile','#messages'].includes(location.hash)) return location.replace('./admin.html');
     await enter(user);
   } catch(error) {
     if(error.status===401){localStorage.removeItem('bokToken');showAuth();}
