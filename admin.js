@@ -9,7 +9,39 @@ function showSection(name){$$('.admin-view').forEach(v=>v.classList.toggle('is-a
 async function post(action,data,key){await api('/api/admin/'+action,{method:'POST',body:JSON.stringify({...data,request_key:key})});await refresh();}
 const credentials=[{name:'phone',label:'Телефон основателя',type:'tel',placeholder:'+79991234567',autocomplete:'off',pattern:'\\+[1-9][0-9]{9,14}',required:true},{name:'password',label:'Пароль для первого входа',type:'password',placeholder:'Не менее 12 символов',autocomplete:'new-password',minLength:12,required:true}];
 function createUser(){dialog('Создать пользователя',[{name:'full_name',label:'Имя и фамилия',required:true},{name:'email',label:'Email',type:'email',required:true},{name:'organization',label:'Организация',required:true},{name:'role',label:'Роль',options:Object.entries(roleNames)},...credentials],(v,k)=>post('users',v,k),'Создать');}
-function userCard(u){const d=dialog(u.full_name,[{name:'full_name',label:'Имя',value:u.full_name,required:true},{name:'email',label:'Email',type:'email',value:u.email,required:true},{name:'phone',label:'Телефон для SMS',type:'tel',value:u.phone},{name:'organization',label:'Организация',value:u.organization},{name:'role',label:'Роль',value:u.role_code,options:Object.entries(roleNames)},{name:'status',label:'Доступ',value:u.status,options:[['active','Активен'],['blocked','Заблокирован'],['archived','В архиве']]},{name:'password',label:'Новый пароль (оставьте пустым, чтобы сохранить)',type:'password'}],(v,k)=>post('user-update',{...v,user_id:u.public_id},k));const info=el('div');[u.email,u.phone||'Телефон не указан',u.organization||'Организация не указана',`Создан: ${new Date(u.created_at).toLocaleString('ru-RU')}`,`Последний вход: ${u.last_login_at?new Date(u.last_login_at).toLocaleString('ru-RU'):'Нет входов'}`,...(u.relationships||[]).map(p=>`${p.name} · ${p.relationship}`)].forEach(t=>info.append(el('p',t)));d.querySelector('h2').after(info);}
+function userCard(u){
+  const d=dialog(u.full_name,[
+    {name:'full_name',label:'Имя',value:u.full_name,required:true},
+    {name:'email',label:'Email',type:'email',value:u.email,required:true},
+    {name:'phone',label:'Телефон',type:'tel',value:u.phone||''},
+    {name:'organization',label:'Организация',value:u.organization||''},
+    {name:'role',label:'Роль',value:u.role_code,options:Object.entries(roleNames)},
+    {name:'status',label:'Доступ',value:u.status,options:[['active','Активен'],['blocked','Заблокирован'],['archived','В архиве']]},
+    {name:'password',label:'Новый пароль',type:'password',autocomplete:'new-password',minLength:12}
+  ],(v,k)=>post('user-update',{...v,user_id:u.public_id},k),'Сохранить изменения');
+  d.classList.add('admin-user-dialog');
+  const close=d.firstElementChild;close.textContent='×';close.classList.add('admin-user-close');close.setAttribute('aria-label','Закрыть карточку');
+  const form=d.querySelector('form'),title=form.querySelector('h2');
+  const header=el('header',undefined,'admin-user-header');
+  const initials=u.full_name.trim().split(/\s+/).slice(0,2).map(part=>part[0]).join('').toUpperCase();
+  const avatar=el('span',initials,'admin-user-avatar');avatar.setAttribute('aria-hidden','true');
+  const identity=el('div',undefined,'admin-user-identity');identity.append(title,el('p',u.email));
+  const status=el('span',accessNames[u.status]||u.status,`admin-user-status admin-user-status-${u.status}`);
+  header.append(avatar,identity,status);
+  const dates=el('div',undefined,'admin-user-dates');
+  for(const [label,value] of [['Создан',u.created_at],['Последний вход',u.last_login_at]]){
+    const item=el('div');item.append(el('span',label),el('strong',value?new Date(value).toLocaleString('ru-RU'):'Пока не входил'));dates.append(item);
+  }
+  const labels=new Map([...form.querySelectorAll(':scope > label')].map(label=>[label.querySelector('[name]').name,label]));
+  const fields=el('section',undefined,'admin-user-section admin-user-fields');fields.append(el('h3','Данные пользователя'));
+  for(const name of ['full_name','email','phone','organization'])fields.append(labels.get(name));
+  const access=el('section',undefined,'admin-user-section admin-user-access');access.append(el('h3','Доступ'));
+  for(const name of ['role','status'])access.append(labels.get(name));
+  const password=labels.get('password');password.append(el('small','Заполняйте только при смене пароля.'));access.append(password);
+  form.prepend(header,dates,fields,access);
+  if(u.relationships?.length){const projects=el('div',undefined,'admin-user-projects');projects.append(el('strong','Проекты'));u.relationships.forEach(p=>projects.append(el('span',`${p.name} · ${p.relationship}`)));access.after(projects);}
+  const footer=el('footer',undefined,'admin-user-footer');footer.append(form.querySelector('.focus-form-error'),form.querySelector('button[type=submit]'));form.append(footer);
+}
 function renderUsers(){const query=$('#adminUserSearch').value.toLowerCase(),role=$('#roleFilter').value,tbody=$('#usersTable');tbody.replaceChildren();users.filter(u=>(role==='all'||u.role_code===role)&&`${u.full_name} ${u.email} ${u.organization||''}`.toLowerCase().includes(query)).forEach(u=>{const tr=el('tr');[u.full_name+' · '+u.email,roleNames[u.role_code],u.organization||'—',accessNames[u.status],u.last_login_at?new Date(u.last_login_at).toLocaleString('ru-RU'):'Нет входов'].forEach(t=>tr.append(el('td',t)));const td=el('td');td.append(btn('Открыть',()=>userCard(u)));tr.append(td);tbody.append(tr);});}
 async function approveRegistration(r){
   const result=await api('/api/admin/registration',{method:'POST',body:JSON.stringify({request_id:r.public_id,decision:'approve'})});
