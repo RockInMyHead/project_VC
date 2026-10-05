@@ -49,3 +49,4 @@
 .admin-user-dialog button:focus-visible{outline:3px solid var(--palette-sage);outline-offset:2px}
 html[data-theme="dark"] .admin-user-footer button[type="submit"]{color:#14200f}
 @media(max-width:620px){.admin-user-dialog form{padding:23px 20px 0}.admin-user-header{align-items:flex-start;flex-wrap:wrap;gap:11px;padding-right:43px}.admin-user-avatar{width:44px;height:44px;border-radius:12px;font-size:16px}.admin-user-dialog h2{font-size:21px}.admin-user-status{margin-left:55px}.admin-user-dates{gap:12px;padding:13px}.admin-user-section{grid-template-columns:1fr;padding:20px 0}.admin-user-section h3{grid-column:auto}.admin-user-dialog .admin-user-section label:has([name="password"]){grid-column:auto}.admin-user-footer{margin:0 -20px;padding:15px 20px}}
+.admin-topbar h1{margin:0}.admin-hero h2{margin:0}
