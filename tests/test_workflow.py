@@ -3,6 +3,7 @@ import json
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'backend'))
@@ -121,6 +122,19 @@ class WorkflowTests(unittest.TestCase):
         with patch.object(server,'connect',side_effect=lambda:database.connect(self.path)):
             self.assertEqual(self.handler('/api/admin/audit?action=tree.card',{},'investor').do_GET()[0],403)
             self.assertEqual(self.handler('/api/admin/audit?action=tree.card',{},'super_admin').do_GET()[1]['items'][0]['action'],'tree.card')
+    def test_admin_activity_counts_real_daily_records(self):
+        day=(datetime.now(timezone.utc)-timedelta(days=1)).date().isoformat()
+        self.db.execute('UPDATE users SET created_at=? WHERE id=?',(day+'T12:00:00Z',self.users['investor']['id']))
+        for actor in ('founder','founder','investor'):
+            self.db.execute("INSERT INTO audit_log(public_id,actor_id,action,entity_type,created_at) VALUES(?,?,'project.viewed','project',?)",(database.public_id('aud'),self.users[actor]['id'],day+'T12:00:00Z'))
+        result=server.admin_activity(self.db)
+        self.assertEqual(len(result['days']),7)
+        yesterday=next(item for item in result['days'] if item['date']==day)
+        self.assertEqual((yesterday['active_users'],yesterday['registrations'],yesterday['actions']),(2,1,3))
+        self.db.commit()
+        with patch.object(server,'connect',side_effect=lambda:database.connect(self.path)):
+            self.assertEqual(self.handler('/api/admin/activity',{},'investor').do_GET()[0],403)
+            self.assertEqual(self.handler('/api/admin/activity',{},'super_admin').do_GET()[1]['days'][-2],yesterday)
     def test_client_ip_only_trusted_from_private_proxy(self):
         h=self.handler('/api/auth/login',{})
         h.headers={'X-Real-IP':'203.0.113.17'}

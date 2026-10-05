@@ -78,6 +78,23 @@ def audit_entries(db: sqlite3.Connection, query: str) -> dict:
     return {'items': items, 'next_cursor': next_cursor}
 
 
+def admin_activity(db: sqlite3.Connection) -> dict:
+    today = datetime.now(timezone.utc).date()
+    dates = [(today - timedelta(days=offset)).isoformat() for offset in range(6, -1, -1)]
+    start = dates[0]
+    series = {day: {'date': day, 'active_users': 0, 'registrations': 0, 'actions': 0} for day in dates}
+    queries = {
+        'active_users': "SELECT substr(created_at,1,10) day, COUNT(DISTINCT actor_id) total FROM audit_log WHERE actor_id IS NOT NULL AND created_at>=? GROUP BY day",
+        'registrations': "SELECT substr(created_at,1,10) day, COUNT(*) total FROM users WHERE created_at>=? GROUP BY day",
+        'actions': "SELECT substr(created_at,1,10) day, COUNT(*) total FROM audit_log WHERE created_at>=? GROUP BY day",
+    }
+    for metric, query in queries.items():
+        for row in db.execute(query, (start,)):
+            if row['day'] in series:
+                series[row['day']][metric] = row['total']
+    return {'timezone': 'UTC', 'days': list(series.values())}
+
+
 def create_registration_request(db: sqlite3.Connection, data: dict) -> str | None:
     required = ("full_name", "email", "organization")
     if any(not isinstance(data.get(k),str) or len(data[k])>500 for k in required): return None
@@ -460,6 +477,8 @@ class ApiHandler(SimpleHTTPRequestHandler):
                         "audit_today": db.execute("SELECT COUNT(*) FROM audit_log WHERE julianday(created_at) >= julianday('now','-1 day')").fetchone()[0],
                     }
                     return self._json(200, counts)
+                if path == "/api/admin/activity":
+                    return self._json(200, admin_activity(db))
                 if path == "/api/admin/users":
                     rows = db.execute("SELECT u.public_id,u.full_name,u.email,u.phone,u.organization,u.status,u.created_at,u.last_login_at,r.code role_code,r.name role_name FROM users u JOIN roles r ON r.id=u.role_id ORDER BY u.created_at DESC").fetchall()
                     items=[]

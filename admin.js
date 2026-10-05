@@ -5,7 +5,7 @@ const accessNames={active:'Активен',blocked:'Заблокирован',ar
 const {el,btn,dialog,run}=WorkflowUI;
 async function api(path,options={}){const response=await fetch(path,{...options,headers:{'Content-Type':'application/json',Authorization:`Bearer ${localStorage.getItem('bokToken')}`}});const data=await response.json();if(response.status===401){localStorage.removeItem('bokToken');location.replace('./index.html#auth');}if(!response.ok)throw new Error(data.message||'Не удалось выполнить действие.');return data;}
 function toast(message){$('#adminToast').textContent=message;$('#adminToast').classList.add('is-visible');setTimeout(()=>$('#adminToast').classList.remove('is-visible'),4000);}
-function showSection(name){$$('.admin-view').forEach(v=>v.classList.toggle('is-active',v.dataset.view===name));$$('[data-section]').forEach(b=>b.classList.toggle('is-active',b.dataset.section===name));$('#sectionTitle').textContent=({overview:'Обзор платформы',users:'Пользователи',registrations:'Заявки на регистрацию',projects:'Все проекты',audit:'Аудит действий',system:'Состояние системы'})[name];if(name==='audit')loadAudit(true).catch(e=>toast(e.message));}
+function showSection(name){$$('.admin-view').forEach(v=>v.classList.toggle('is-active',v.dataset.view===name));$$('[data-section]').forEach(b=>b.classList.toggle('is-active',b.dataset.section===name));$('#sectionTitle').textContent=({overview:'Обзор платформы',users:'Пользователи',registrations:'Заявки на регистрацию',projects:'Все проекты',audit:'Аудит действий',system:'Состояние системы'})[name];if(name==='audit')loadAudit(true).catch(e=>toast(e.message));if(name==='system')loadSystemActivity();}
 async function post(action,data,key){await api('/api/admin/'+action,{method:'POST',body:JSON.stringify({...data,request_key:key})});await refresh();}
 const credentials=[{name:'phone',label:'Телефон основателя',type:'tel',placeholder:'+79991234567',autocomplete:'off',pattern:'\\+[1-9][0-9]{9,14}',required:true},{name:'password',label:'Пароль для первого входа',type:'password',placeholder:'Не менее 12 символов',autocomplete:'new-password',minLength:12,required:true}];
 function createUser(){dialog('Создать пользователя',[{name:'full_name',label:'Имя и фамилия',required:true},{name:'email',label:'Email',type:'email',required:true},{name:'organization',label:'Организация',required:true},{name:'role',label:'Роль',options:Object.entries(roleNames)},...credentials],(v,k)=>post('users',v,k),'Создать');}
@@ -80,6 +80,28 @@ const auditActions={'auth.login_success':'Вход в систему','auth.logi
 const auditEntities={project:'Проект',user:'Пользователь',session:'Сессия',message:'Сообщение'};
 function auditRow(a){const row=el('article');row.className='audit-entry';row.append(el('time',new Date(a.created_at).toLocaleString('ru-RU')),el('strong',auditActions[a.action]||a.action),el('p',`${a.actor_name||'Система'} · ${auditEntities[a.entity_type]||a.entity_type}`));const details=el('details');const summary=el('summary','Подробности');const body=el('dl');for(const [label,value] of [['Код действия',a.action],['Объект',a.entity_public_id||'—'],['IP-адрес',a.ip_address||'—'],['ID записи',a.public_id]]){body.append(el('dt',label),el('dd',value));}details.append(summary,body);let metadata={};try{metadata=JSON.parse(a.metadata_json||'{}');}catch{}if(Object.keys(metadata).length){const pre=el('pre',JSON.stringify(metadata,null,2));details.append(pre);}row.append(details);return row;}
 function renderAuditPreview(){const host=$('#auditPreview');host.replaceChildren();if(!audit.length)host.append(el('p','Записей пока нет.'));audit.slice(0,4).forEach(a=>host.append(auditRow(a)));}
+async function loadSystemActivity(){
+  const host=$('#systemActivity'),status=$('#systemActivityStatus');status.textContent='Загружаем показатели…';host.replaceChildren();
+  try{
+    const data=await api('/api/admin/activity');
+    const metrics=[['active_users','Активные пользователи','Уникальные участники с действиями'],['registrations','Регистрации','Новые учётные записи'],['actions','Действия в системе','Записи журнала аудита']];
+    for(const [key,title,description] of metrics){
+      const values=data.days.map(day=>day[key]),maximum=Math.max(1,...values),card=el('article',undefined,'admin-activity-card');
+      const heading=el('div',undefined,'admin-activity-card-head');heading.append(el('span',title),el('strong',String(values.at(-1)??0)));
+      card.append(heading,el('p',description));
+      const chart=el('div',undefined,'admin-activity-chart');chart.setAttribute('role','img');chart.setAttribute('aria-label',data.days.map(day=>`${day.date}: ${day[key]}`).join(', '));
+      data.days.forEach(day=>{
+        const column=el('div',undefined,'admin-activity-day'),value=day[key];
+        const track=el('div',undefined,'admin-activity-track'),bar=el('span',undefined,'admin-activity-bar'+(value?'':' is-empty'));
+        bar.style.height=value?`${Math.max(8,value/maximum*100)}%`:'3px';track.append(bar);
+        const label=new Date(`${day.date}T12:00:00Z`).toLocaleDateString('ru-RU',{day:'numeric',month:'short',timeZone:'UTC'});
+        column.append(el('small',String(value)),track,el('time',label));chart.append(column);
+      });
+      card.append(chart);host.append(card);
+    }
+    status.textContent='';
+  }catch(error){status.textContent=error.message;}
+}
 async function loadAudit(reset=false){const request=++auditRequest;if(reset){auditCursor=null;auditShown=0;$('#auditLog').replaceChildren();}const params=new URLSearchParams(new FormData($('#auditFilters')));for(const [key,value] of [...params])if(!value)params.delete(key);if(auditCursor)params.set('before',auditCursor);$('#auditStatus').textContent='Загружаем события…';$('#auditMore').disabled=true;try{const data=await api('/api/admin/audit?'+params.toString());if(request!==auditRequest)return;data.items.forEach(a=>$('#auditLog').append(auditRow(a)));auditShown+=data.items.length;auditCursor=data.next_cursor;$('#auditMore').hidden=!auditCursor;$('#auditStatus').textContent=auditShown?`Показано записей: ${auditShown}`:'По этим условиям событий нет.';}catch(error){if(request===auditRequest)$('#auditStatus').textContent=error.message;throw error;}finally{if(request===auditRequest)$('#auditMore').disabled=false;}}
 async function refresh(){const [overview,u,r,p,a]=await Promise.all([api('/api/admin/overview'),api('/api/admin/users'),api('/api/admin/registrations'),api('/api/projects'),api('/api/admin/audit')]);users=u.items;registrations=r.items;projects=p.items;audit=a.items;const metrics=$('#adminMetrics');metrics.replaceChildren();[['Пользователи',overview.users],['Инвесторы',overview.investors],['Проекты',overview.projects],['На проверке',overview.reviews],['Новые заявки',overview.pending_registrations],['Аудит за сутки',overview.audit_today]].forEach(([title,value])=>{const card=el('article');card.append(el('span',title),el('strong',value));metrics.append(card);});$('#usersBadge').textContent=overview.users;$('#requestsBadge').textContent=overview.pending_registrations;$('#projectsBadge').textContent=overview.projects;$('#auditBadge').textContent=overview.audit_today;$('#taskRequests').textContent=overview.pending_registrations;$('#taskReviews').textContent=overview.reviews;renderUsers();renderRegistrations();renderProjects();renderAuditPreview();}
 function openProject(id){location.href='./index.html#project/'+encodeURIComponent(id);}
