@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+!.env.example
+data/
+backups/
+*.db
+*.db-*
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
+**/.DS_Store
+**/._*

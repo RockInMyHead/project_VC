@@ -1,0 +1,36 @@
+.workspace{grid-template-columns:250px minmax(0,1fr)}
+.workspace>main{min-width:0}
+.project-create-page,.project-create-page .project-form,.project-create-page .tree-editor{min-width:0;max-width:100%}
+.project-create-page .tree-editor{border-color:#dce5db;border-radius:16px;background:#fff;box-shadow:0 10px 30px rgba(24,50,42,.035)}
+.project-create-page .tree-editor-heading{padding:28px 30px 24px;background:#fff}
+.project-create-page .tree-editor-heading h3{font-size:30px;line-height:1.08;margin:8px 0 8px}
+.project-create-page .tree-editor-heading p{max-width:490px;font-size:14px;line-height:1.5}
+.project-create-page .tree-add{min-height:42px;border-color:#4e7336;background:#4e7336;color:#fff;font-size:12px;box-shadow:none}
+.project-create-page .tree-add:hover{background:#303e20;color:#fff}
+.project-create-page .tree-canvas{display:block;width:100%;max-width:100%;height:430px;overflow:auto;background-color:#f6f9f4;background-image:linear-gradient(rgba(105,141,111,.075) 1px,transparent 1px),linear-gradient(90deg,rgba(105,141,111,.075) 1px,transparent 1px);background-size:24px 24px;scrollbar-color:#b4bdaa #eef3eb;overscroll-behavior-inline:contain}
+.project-create-page .tree-lines path{stroke:#b5c0a9;stroke-width:2.5;stroke-dasharray:none;animation:none}
+.project-create-page .tree-lines path.is-active{stroke:#697d52;stroke-width:3;filter:none}
+.project-create-page .tree-lines path.is-complete{stroke:#566c3d;stroke-width:3}
+.project-create-page .tree-lines path.is-selected{stroke:#5a743c;stroke-width:4;filter:drop-shadow(0 0 4px rgba(47,116,72,.35))}
+.project-create-page .tree-node{display:block;width:236px;min-height:136px;padding:0;overflow:hidden;border:1px solid #d7e3d8;border-radius:13px;background:#fff;box-shadow:0 12px 24px rgba(31,70,45,.08)}
+.project-create-page .tree-node:hover{border-color:#b4c2a5;box-shadow:0 16px 28px rgba(31,70,45,.13)}
+.project-create-page .tree-node.selected{border-color:#697e50;box-shadow:0 0 0 3px rgba(97,143,97,.15),0 18px 32px rgba(31,70,45,.15)}
+.project-create-page .tree-node.in_progress::after{display:none}
+.project-create-page .tree-node-main{display:flex;flex-direction:column;align-items:flex-start;gap:8px;width:100%;min-height:106px;padding:17px 18px 11px;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}
+.project-create-page .tree-node-main small{color:#778567;font-size:9px;letter-spacing:.1em}
+.project-create-page .tree-node-main strong{display:-webkit-box;max-width:100%;overflow:hidden;color:#2b381d;font-size:15px;line-height:1.25;text-overflow:ellipsis;white-space:normal;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.project-create-page .tree-node-main span{margin-top:auto;padding:4px 8px;border-radius:99px;background:#f0f4ec;color:#6c7462;font-size:10px;font-weight:700}
+.project-create-page .tree-node.in_progress .tree-node-main span{background:#e8f2e6;color:#526a37}
+.project-create-page .tree-node.completed .tree-node-main span{background:#e5efe8;color:#4a5f31}
+.project-create-page .tree-node-branch{display:block;width:100%;min-height:32px;padding:6px 18px;border:0;border-top:1px solid #e6eee4;background:#fbfdf9;color:#5b7042;font-size:11px;font-weight:700;text-align:left;cursor:pointer}
+.project-create-page .tree-node-branch:hover,.project-create-page .tree-node-branch:focus-visible{background:#e8f2e6}
+.project-create-page .tree-toolbar{padding:13px 30px;border-top:1px solid #e4ede2;border-bottom:1px solid #e4ede2;background:#fbfdf9}
+.project-create-page .tree-toolbar>span:nth-child(2){flex:1;text-align:right}
+.tree-navigation{display:flex;gap:6px;flex:none}
+.tree-navigation button{display:grid;width:32px;height:30px;place-items:center;border:1px solid #d6e2d5;border-radius:7px;background:#fff;color:#4a5f31;font-size:17px;line-height:1;cursor:pointer}
+.tree-navigation button:hover{border-color:#9faf8c;background:#eef6ec}
+.project-create-page .tree-inspector{padding:23px 30px 28px}
+.project-create-page .tree-inspector-title{margin-bottom:18px;font-size:16px}
+.project-create-page .tree-branch{min-height:40px;color:#4a5f31;border-color:#c8d4bb;background:#f4f9f2;font-size:12px}
+@media(max-width:760px){.workspace{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:700px){.project-create-page .tree-editor-heading{align-items:flex-start;gap:16px;padding:22px 18px}.project-create-page .tree-editor-heading h3{font-size:25px}.project-create-page .tree-editor-heading p{font-size:12px}.project-create-page .tree-add{min-width:0;padding:9px 11px;white-space:normal;text-align:center}.project-create-page .tree-canvas{height:390px}.project-create-page .tree-toolbar{padding:12px 18px}.project-create-page .tree-inspector{padding:20px 18px}}

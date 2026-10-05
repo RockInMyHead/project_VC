@@ -1,0 +1,43 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      BOKOBOK_HOST: 0.0.0.0
+      BOKOBOK_DB_PATH: /data/bokobok.db
+      BOKOBOK_TRUST_PROXY: "1"
+      BOKOBOK_DISABLE_SMS_2FA: ${BOKOBOK_DISABLE_SMS_2FA:-0}
+      SMS_RU_API_ID: ${SMS_RU_API_ID:-}
+    volumes:
+      - bokobok_data:/data
+    expose:
+      - "5188"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  bokobok_data:
+  caddy_data:
+  caddy_config:

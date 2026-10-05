@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Bok o bok database backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/bokobok
+Environment=BACKUP_DIR=/opt/bokobok/backups
+UMask=0077
+ExecStart=/bin/sh /opt/bokobok/deploy/backup.sh

@@ -1,0 +1,54 @@
+/* Shared semantic theme for all application screens. */
+:root{--green:var(--palette-primary);--lime:var(--palette-tint);--line:var(--palette-line);--bg:var(--palette-canvas);--paper:var(--palette-paper);--ink:var(--palette-ink);--muted:var(--palette-muted);--dark:var(--palette-sidebar);color-scheme:light}
+body{background:var(--palette-paper);color:var(--palette-ink)}
+.hero{background:linear-gradient(135deg,var(--palette-paper) 50%,var(--palette-soft))}
+.hero h1 em,.eyebrow,.tree-kicker{color:var(--palette-olive)}
+.workspace main,.admin-main{background:var(--palette-canvas)}
+.workspace>aside,.admin-sidebar{background:var(--palette-sidebar);color:var(--palette-paper)}
+.workspace .workspace-nav button.active,.workspace .workspace-nav button:hover{background:var(--palette-primary);color:var(--palette-paper)}
+.workspace .workspace-nav button{color:#d5e0d7}
+.workspace>aside .wordmark{color:var(--palette-paper)}
+.primary,.admin-primary,.focus-primary{background:var(--palette-primary);color:var(--palette-paper)}
+.primary:hover,.admin-primary:hover,.focus-primary:hover{background:#4e7336}
+.system-preview strong,.chat-avatar,.admin-avatar,#messageBadge{background:var(--palette-tint);color:var(--palette-primary)}
+.tree-canvas{background-color:var(--palette-paper);background-image:radial-gradient(var(--palette-line) 1px,transparent 1px)}
+.tree-node.selected{border-color:var(--palette-sage);box-shadow:0 0 0 3px #beceab40,0 12px 28px #2f3d2012}
+.tree-node.in_progress::after{border-color:var(--palette-sage)}
+.tree-lines path.is-active{stroke:var(--palette-olive);filter:none}
+.chat-history{background:var(--palette-canvas)}
+.chat-bubble.own{background:var(--palette-soft);border-color:#d5e0d7;color:var(--palette-ink)}
+.chat-unread{background:var(--palette-primary);color:var(--palette-paper)}
+.admin-brand>span{background:var(--palette-tint);color:var(--palette-primary)}
+.admin-sidebar nav b.healthy{color:#beceab}
+.focus-graph,.focus-event,.focus-readiness,.focus-timeline,.focus-alternate{background:var(--palette-paper);box-shadow:0 2px 8px #2f3d2004}
+.focus-lane{background:var(--palette-soft)}
+.focus-dot,.focus-root>span{background:var(--palette-sage);color:var(--palette-paper)}
+.focus-node.in_progress .focus-dot,.focus-node.selected .focus-dot{background:var(--palette-olive);color:var(--palette-paper);box-shadow:0 0 0 4px #beceab40}
+.focus-node.selected .focus-node-label{background:var(--palette-soft)}
+.focus-node.selected strong{color:var(--palette-primary)}
+.focus-status{background:var(--palette-tint);color:#50603d}
+.focus-dialog{background:var(--palette-paper);color:var(--palette-ink)}
+.focus-form-error{color:#8b3d2c}
+input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--palette-olive);outline-offset:3px}
+.mx-calendar-window:focus-visible,.mx-att-window:focus-visible,.mx-handle:focus-visible,.mx-map-scroll:focus-visible{outline:2px solid var(--palette-olive);outline-offset:3px}
+::selection{background:#d0ddc2;color:var(--palette-ink)}
+
+body:not([data-role="founder"]):not([data-role="fund_staff"]) .creator-only{display:none}
+
+@media(max-width:760px){
+  .workspace{grid-template-columns:minmax(0,1fr)}
+  .workspace>aside,.workspace>main{min-width:0;max-width:100%;box-sizing:border-box}
+  .workspace>aside,body.matrix28-page #workspace>aside{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:14px 16px;min-height:0}
+  .workspace>aside .wordmark{margin-right:auto}
+  .workspace>aside>div,body.matrix28-page #workspace>aside>div:not([hidden]){display:flex;align-items:center;gap:10px;margin:0;flex-wrap:wrap;max-width:100%;min-width:0}
+  .workspace>aside>div strong{overflow-wrap:anywhere}
+  .workspace>aside>div small{display:none}
+  .workspace>aside>div button{padding:8px 0}
+  .workspace>aside .workspace-nav,body.matrix28-page #workspace>aside nav.workspace-nav{display:flex;order:3;width:100%;gap:8px}
+  .workspace>aside .workspace-nav button{width:auto;flex:1;text-align:center;padding:10px 12px}
+  .workspace main{padding:22px 16px 40px}
+  .workspace main>header{align-items:flex-start;flex-wrap:wrap;gap:12px}
+  .workspace main>header h1{font-size:34px}
+  .project-grid{grid-template-columns:minmax(0,1fr);margin-top:24px}
+  .project-card{min-width:0;overflow-wrap:anywhere}
+}

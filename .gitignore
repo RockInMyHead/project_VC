@@ -1,0 +1,12 @@
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/uploads/
+__pycache__/
+*.pyc
+
+.env
+backups/
+*.tar.gz
+.DS_Store
+._*

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#101d16">
+  <title>Бок о бок — администрирование</title>
+  <link rel="stylesheet" href="./admin.css?v=olive33-1">
+  <style>[hidden]{display:none!important}</style>
+<link rel="stylesheet" href="./palette.css?v=olive33-1"><link rel="stylesheet" href="./palette-overrides.css?v=olive33-1"><link rel="stylesheet" href="./focus.css?v=olive33-1"><link rel="stylesheet" href="./workflow.css?v=olive33-1"><link rel="stylesheet" href="./typography.css?v=1"><link rel="stylesheet" href="./theme.css?v=2"><script src="./theme.js?v=2"></script></head>
+<body>
+  <div class="admin-loading" id="loading">Проверяем права доступа…</div>
+  <div class="admin-app" id="adminApp" hidden>
+    <aside class="admin-sidebar">
+      <a class="admin-brand" href="./admin.html"><span>Б</span><div><strong>Бок о бок</strong><small>управление системой</small></div></a>
+      <nav>
+        <button class="is-active" data-section="overview">Обзор <b>01</b></button>
+        <button data-section="users">Пользователи <b id="usersBadge">0</b></button>
+        <button data-section="registrations">Заявки <b id="requestsBadge">0</b></button>
+        <button data-section="projects">Проекты <b id="projectsBadge">0</b></button>
+        <button data-section="audit">Аудит действий <b id="auditBadge">0</b></button>
+        <button data-section="system">Система <b class="healthy">OK</b></button><button type="button" id="adminProfile">Личный кабинет <b>↗</b></button>
+      </nav>
+      <button type="button" class="theme-toggle theme-toggle-sidebar" data-theme-toggle></button>
+      <div class="admin-account"><span class="admin-avatar">—</span><div><strong id="adminName">Администратор</strong><small>Главный администратор</small></div><button id="adminLogout">Выйти</button></div>
+    </aside>
+
+    <main class="admin-main">
+      <header class="admin-topbar"><div><span>Системное управление</span><h1 id="sectionTitle">Обзор платформы</h1></div><div class="admin-actions"><span class="system-state" id="systemState"><i></i>Проверка состояния…</span><button class="admin-primary" data-new-user>Создать пользователя</button></div></header>
+
+      <section class="admin-view is-active" data-view="overview">
+        <div class="admin-hero"><div><span>Состояние платформы</span><h2>Система под контролем.</h2><p>Пользователи, публикации, безопасность и инфраструктура в одном рабочем пространстве.</p></div><div class="hero-clock"><small>Последняя проверка</small><strong id="currentTime">сейчас</strong><span>База данных · OK</span></div></div>
+        <div class="admin-metrics" id="adminMetrics"></div>
+        <div class="admin-grid"><section class="admin-panel"><div class="panel-title"><div><span>Требует внимания</span><h3>Операционные задачи</h3></div></div><div class="task-list"><article><i class="orange"></i><div><strong>Заявки на регистрацию</strong><p>Новые пользователи ожидают решения администратора.</p></div><b id="taskRequests">0</b></article><article><i class="green"></i><div><strong>Публикации на проверке</strong><p>Изменения деревьев ожидают сотрудника фонда.</p></div><b id="taskReviews">0</b></article><article><i class="blue"></i><div><strong>Резервное копирование</strong><p>Данные появятся после подключения резервного хранилища.</p></div><b>—</b></article></div></section><section class="admin-panel"><div class="panel-title"><div><span>Последние события</span><h3>Журнал аудита</h3></div><button data-section="audit">Все события</button></div><div class="audit-preview" id="auditPreview"></div></section></div>
+      </section>
+
+      <section class="admin-view" data-view="users"><div class="view-toolbar"><label>Поиск<input id="adminUserSearch" type="search" placeholder="Имя, email или организация"></label><select id="roleFilter"><option value="all">Все роли</option><option value="investor">Инвесторы</option><option value="founder">Основатели</option><option value="fund_staff">Сотрудники фонда</option><option value="super_admin">Администраторы</option></select><button class="admin-primary" data-new-user>Создать пользователя</button></div><div class="admin-table-wrap"><table><thead><tr><th>Пользователь</th><th>Роль</th><th>Организация</th><th>Доступ</th><th>Последний вход</th><th></th></tr></thead><tbody id="usersTable"></tbody></table></div></section>
+
+      <section class="admin-view" data-view="registrations"><div class="section-intro"><span>Управление доступом</span><h2>Заявки на регистрацию</h2><p>Проверьте организацию и предполагаемую роль до создания учётной записи.</p></div><div class="request-list" id="registrationList"></div></section>
+
+      <section class="admin-view" data-view="projects"><div class="section-intro"><span>Портфель фонда</span><h2>Все проекты</h2><p>Статусы, актуальность и ответственные сотрудники фонда.</p></div><div class="project-admin-grid" id="adminProjects"></div></section>
+
+      <section class="admin-view" data-view="audit"><div class="section-intro"><span>Безопасность</span><h2>Аудит действий</h2><p>Входы, публикации, просмотры и административные изменения.</p></div><form class="audit-filters" id="auditFilters"><label>Действие<input name="action" type="search" placeholder="Код: login, publish, tree…"></label><label>Пользователь<input name="actor" type="search" placeholder="Имя участника"></label><label>Объект<select name="entity"><option value="">Все объекты</option><option value="project">Проект</option><option value="user">Пользователь</option><option value="session">Сессия</option><option value="message">Сообщение</option></select></label><label>С даты<input name="from" type="date"></label><label>По дату<input name="to" type="date"></label><button type="submit" class="admin-primary">Применить</button><button type="reset">Сбросить</button></form><p class="audit-status" id="auditStatus" role="status"></p><div class="audit-log" id="auditLog"></div><button type="button" class="audit-more" id="auditMore" hidden>Показать ещё</button></section>
+
+      <section class="admin-view" data-view="system"><div class="section-intro"><span>Инфраструктура</span><h2>Состояние системы</h2><p>Основные сервисы, база и резервное копирование.</p></div><div class="system-grid"><article><span>API</span><strong id="apiStatus">Проверяется</strong><small>данные health-check</small></article><article><span>База данных</span><strong id="dbStatus">Проверяется</strong><small>проверка целостности</small></article><article><span>Хранилище</span><strong>Не подключено</strong><small>настройте объектное хранилище</small></article><article><span>Резервное копирование</span><strong>Не настроено</strong><small>укажите расписание и хранилище</small></article></div></section>
+    </main>
+  </div>
+
+  <div class="admin-toast" id="adminToast"></div>
+  <script src="./workflow-ui.js?v=compare2"></script><script src="./admin.js?v=profile1"></script>
+</body>
+</html>

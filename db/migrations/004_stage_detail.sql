@@ -1,0 +1,2 @@
+ALTER TABLE stages ADD COLUMN criteria_text TEXT NOT NULL DEFAULT '';
+ALTER TABLE stages ADD COLUMN attention_note TEXT NOT NULL DEFAULT '';

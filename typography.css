@@ -1,0 +1,31 @@
+/* One type system across the public site, workspace, project view and admin. */
+:root {
+  --font-ui: "Avenir Next", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-ui);
+  font-synthesis: none;
+}
+
+body,
+button,
+input,
+select,
+textarea,
+.focus-project,
+.matrix28 .mx-timeline.mx-timeline-minimal {
+  font-family: var(--font-ui);
+}
+
+body { -webkit-font-smoothing: antialiased; }
+
+h1, h2, h3,
+.wordmark,
+.admin-brand,
+.home-brand,
+.focus-brand {
+  font-family: var(--font-ui);
+  letter-spacing: -0.035em;
+}
+
+p, li, dd, input, textarea { letter-spacing: -0.008em; }
+
+.home-header-login { text-decoration: none; }

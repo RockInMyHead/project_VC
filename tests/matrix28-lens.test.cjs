@@ -1,0 +1,14 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),vm=require('node:vm');
+const ctx=vm.createContext({});
+vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../matrix28.js'),'utf8')+';this.move=Matrix28.moveLens;',ctx);
+const move=(delta,kind)=>ctx.move(40,60,delta,kind,0,100,5,40);
+assert.equal(move(10,'center').start,50);assert.equal(move(10,'center').end,70);
+assert.equal(move(100,'center').start,80);assert.equal(move(100,'center').end,100);
+assert.equal(move(-100,'center').start,0);assert.equal(move(-100,'center').end,20);
+assert.equal(move(10,'left').start,50);assert.equal(move(10,'left').end,60);
+assert.equal(move(-10,'right').start,40);assert.equal(move(-10,'right').end,50);
+assert.equal(move(100,'left').start,55);assert.equal(move(-100,'left').start,20);
+assert.equal(move(100,'right').end,80);assert.equal(move(-100,'right').end,45);
+assert.equal(move(.25,'center').start,40.25);
+console.log('Lens: continuous movement, anchored handles, width limits and boundary clamping passed.');

@@ -1,0 +1,25 @@
+html,
+body,
+.public-home {
+  background: #ffffff;
+}
+
+.landing-nav {
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.main {
+  background: #ffffff;
+}
+
+.app-shell {
+  background: #ffffff;
+}
+
+body[data-role="admin"] .founder-only {
+  display: inline-flex !important;
+}
+
+body[data-role="admin"] .founder-only.staff-only {
+  display: inline-flex !important;
+}
