@@ -72,7 +72,7 @@ const Matrix28 = (() => {
     nodeNavigation.append(btn('←','',()=>navigate(-1)),positionText,btn('→','',()=>navigate(1)));
     nodeNavigation.firstChild.setAttribute('aria-label','Предыдущее событие');
     nodeNavigation.lastChild.setAttribute('aria-label','Следующее событие');
-    graphHeader.append(el('h2','','Карта проекта'),el('span','mx-count',stages.length+' '+eventWord),nodeNavigation,btn('Сегодня','mx-graph-focus',()=>{center=new Date();draw();}));
+    graphHeader.append(el('h2','','Карта проекта'),el('span','mx-count',stages.length+' '+eventWord),nodeNavigation,btn('Сегодня','mx-graph-focus',()=>{center=new Date();draw();syncGraphToLens();}));
     const eras=el('div','mx-eras');
     const dated=stages.map(s=>dt(s.due_at)||dt(s.completed_at)).filter(Boolean).sort((a,b)=>a-b);
     [['ПРОШЛОЕ',dated.length?dated[0].getFullYear()+' — '+(new Date().getFullYear()):'Завершённые этапы'],['ТЕКУЩИЕ ИССЛЕДОВАНИЯ',label(center)],['БУДУЩЕЕ',dated.length?label(dated.at(-1)):'План развития']].forEach(([a,b],i)=>{const x=el('div',i===1?'active':'');x.append(el('b','',a),el('span','',b));eras.append(x);});
@@ -170,10 +170,11 @@ const Matrix28 = (() => {
       origin.append(el('span','mx-root-dot','0'),el('strong','',project.code),el('small','',stages.length+' '+countWord));map.append(origin);
       stages.forEach(s=>{if(filter!=='all'&&filter!==s.status)return;const p=points.get(s.public_id);if(!p)return;const parent=points.get(s.parent_public_id)||root,bend=Math.max(35,(p.x-parent.x)*.45);
         const edgeOutcome=['success','failure','inconclusive'].includes(s.outcome)?s.outcome:'pending';
-        lines.append(svg('path',{d:'M '+parent.x+' '+parent.y+' C '+(parent.x+bend)+' '+parent.y+', '+(p.x-bend)+' '+p.y+', '+p.x+' '+p.y,class:`mx-edge edge-${edgeOutcome}${s.public_id===selected?.public_id?' edge-selected':''}`}));
+        lines.append(svg('path',{d:'M '+parent.x+' '+parent.y+' C '+(parent.x+bend)+' '+parent.y+', '+(p.x-bend)+' '+p.y+', '+p.x+' '+p.y,class:`mx-edge edge-${edgeOutcome}${s.public_id===selected?.public_id?' edge-selected':''}`,'data-stage-id':s.public_id}));
         const dim=query&&!((s.title||'')+' '+(s.description||'')).toLowerCase().includes(query);
         const selectStage=event=>{const keyboard=event?.detail===0;selected=s;center=stageDate(s)||center;draw();scrollToSelected();if(keyboard)[...map.querySelectorAll('.mx-node-dot')].find(button=>button.dataset.stageId===s.public_id)?.focus();};
         const n=el('div','mx-node '+s.status+' outcome-'+edgeOutcome+(selected?.public_id===s.public_id?' selected':'')+(dim?' dimmed':''));
+        n.dataset.stageId=s.public_id;
         n.style.left=p.x/mapWidth*100+'%';n.style.top=p.y/mapHeight*100+'%';n.setAttribute('role','group');n.setAttribute('aria-label',s.title+', '+state[s.status]);
         const caption=el('div','mx-node-text');
         caption.append(el('small','mx-node-code','D'+(s.position||'·')+' · '+(stageDate(s)?.getFullYear()||'без даты')),el('strong','',s.title),el('small','mx-node-description',s.description||state[s.status]));
@@ -191,6 +192,24 @@ const Matrix28 = (() => {
         n.append(dot,caption);map.append(n);
       });
       if(!stages.length)map.append(el('p','mx-empty','В дереве пока нет событий.'));
+      applyLensFocus();
+    }
+    function applyLensFocus(){
+      if(!lensBounds)return;
+      const half=months*monthMs/2,from=+center-half,to=+center+half;
+      const outside=new Set(stages.filter(s=>{const date=stageDate(s);return date&&(+date<from||+date>to);}).map(s=>s.public_id));
+      map.querySelectorAll('.mx-node').forEach(node=>node.classList.toggle('outside-focus',outside.has(node.dataset.stageId)&&node.dataset.stageId!==selected?.public_id));
+      lines.querySelectorAll('.mx-edge').forEach(edge=>edge.classList.toggle('outside-focus',outside.has(edge.dataset.stageId)&&edge.dataset.stageId!==selected?.public_id));
+    }
+    function syncGraphToLens(){
+      const datedStages=stages.filter(s=>stageDate(s)&&(filter==='all'||s.status===filter));
+      if(!datedStages.length){applyLensFocus();return;}
+      const nearest=datedStages.reduce((best,stage)=>{
+        const distance=Math.abs(+stageDate(stage)-center);
+        return !best||distance<best.distance||distance===best.distance&&stage===selected?{stage,distance}:best;
+      },null).stage;
+      if(nearest!==selected){selected=nearest;drawGraph();drawInspector();scrollToSelected();}
+      else applyLensFocus();
     }
     function drawInspector(){
       inspector.replaceChildren();
@@ -235,7 +254,7 @@ const Matrix28 = (() => {
       timeline.classList.add('is-dragging');
       event.preventDefault();event.stopPropagation();
       const target=event.currentTarget,id=event.pointerId,x=event.clientX;
-      const initialCenter=+center,initialMonths=months;
+      const initialCenter=+center,initialMonths=months,initialSelected=selected;
       const initialStart=initialCenter-months*monthMs/2,initialEnd=initialCenter+months*monthMs/2;
       const rect=target.closest('.mx-attention,.mx-calendar').getBoundingClientRect();
       const duration=lensBounds.max-lensBounds.min;
@@ -243,7 +262,7 @@ const Matrix28 = (() => {
       const paint=()=>{
         frame=0;
         const range=moveLens(initialStart,initialEnd,(pendingX-x)/rect.width*duration,kind,lensBounds.min,lensBounds.max,monthMs,24*monthMs);
-        center=new Date((range.start+range.end)/2);months=(range.end-range.start)/monthMs;updateLensView();
+        center=new Date((range.start+range.end)/2);months=(range.end-range.start)/monthMs;updateLensView(true);
       };
       const move=e=>{if(e.pointerId!==id)return;pendingX=e.clientX;if(!frame)frame=requestAnimationFrame(paint);};
       const cleanup=()=>{
@@ -254,7 +273,7 @@ const Matrix28 = (() => {
         host._lensDragCleanup=null;
       };
       const finish=e=>{if(e.pointerId!==id)return;pendingX=e.clientX;cancelAnimationFrame(frame);paint();cleanup();};
-      const cancel=()=>{center=new Date(initialCenter);months=initialMonths;cleanup();updateLensView();};
+      const cancel=()=>{center=new Date(initialCenter);months=initialMonths;selected=initialSelected;cleanup();updateLensView();drawGraph();drawInspector();scrollToSelected();};
       target.setPointerCapture(id);
       target.addEventListener('pointermove',move);target.addEventListener('pointerup',finish);target.addEventListener('pointercancel',cancel);target.addEventListener('lostpointercapture',cancel);window.addEventListener('blur',cancel);
       host._lensDragCleanup=cleanup;
@@ -284,7 +303,7 @@ const Matrix28 = (() => {
       const calWindow=el('div','mx-calendar-window');calWindow.style.left=focusLeft+'%';calWindow.style.width=focusSize+'%';calWindow.onpointerdown=e=>drag(e,'center');calLine.append(calWindow);
       const cursor=el('span','mx-lens-cursor');cursor.style.left=centerX+'%';cursor.setAttribute('aria-hidden','true');calLine.append(cursor);
       stages.filter(stageDate).forEach(s=>{const mark=btn('','mx-calendar-event'+(s===selected?' selected':''),()=>{selected=s;center=stageDate(s);draw();scrollToSelected();});mark.style.left=scaled(stageDate(s))+'%';mark.title=`D${s.position} · ${s.title}`;mark.setAttribute('aria-label',`Фокус на событии D${s.position}: ${s.title}`);calLine.append(mark);});
-      const centerKey=(event,selector)=>{const delta={ArrowLeft:-1,ArrowRight:1,PageUp:-12,PageDown:12}[event.key];if(delta===undefined&&event.key!=='Home')return;event.preventDefault();center=event.key==='Home'?new Date():new Date(center.getFullYear(),center.getMonth()+delta,1);updateLensView();};
+      const centerKey=(event,selector)=>{const delta={ArrowLeft:-1,ArrowRight:1,PageUp:-12,PageDown:12}[event.key];if(delta===undefined&&event.key!=='Home')return;event.preventDefault();center=event.key==='Home'?new Date():new Date(center.getFullYear(),center.getMonth()+delta,1);updateLensView(true);};
       const describeCenter=(node,selector)=>{node.tabIndex=0;node.setAttribute('role',selector==='calendar'?'slider':'group');node.setAttribute('aria-label',selector==='calendar'?'Дата фокуса на календаре':`Фокус на шкале внимания: ${label(center)}`);if(selector==='calendar'){node.setAttribute('aria-valuemin','0');node.setAttribute('aria-valuemax',String(totalMonths));node.setAttribute('aria-valuenow',String(Math.max(0,Math.min(totalMonths,(center.getFullYear()-begin.getFullYear())*12+center.getMonth()-begin.getMonth()))));node.setAttribute('aria-valuetext',label(center));}node.onkeydown=event=>centerKey(event,selector);};
       describeCenter(calWindow,'calendar');
       // Decorative hatch matches the source vector strip; it is not a data chart.
@@ -294,14 +313,14 @@ const Matrix28 = (() => {
       const band=el('div','mx-att-window');band.style.left=Math.max(0,Math.min(100-size,centerX-size/2))+'%';band.style.width=size+'%';band.onpointerdown=e=>drag(e,'center');
       describeCenter(band,'attention');
       const left=el('span','mx-handle'),right=el('span','mx-handle');left.title='Уменьшить окно';right.title='Увеличить окно';left.onpointerdown=e=>drag(e,'left');right.onpointerdown=e=>drag(e,'right');
-      [left,right].forEach((handle,index)=>{handle.tabIndex=0;handle.setAttribute('role','button');handle.setAttribute('aria-label',`${index?'Увеличить':'Уменьшить'} окно линзы · ${Math.round(months*10)/10} мес.`);handle.onkeydown=event=>{if(!['Enter',' ','ArrowLeft','ArrowRight'].includes(event.key))return;event.preventDefault();event.stopPropagation();const range=moveLens(+center-months*monthMs/2,+center+months*monthMs/2,(event.key==='ArrowLeft'?-1:1)*monthMs,index?'right':'left',lensBounds.min,lensBounds.max,monthMs,24*monthMs);center=new Date((range.start+range.end)/2);months=(range.end-range.start)/monthMs;updateLensView();};});
+      [left,right].forEach((handle,index)=>{handle.tabIndex=0;handle.setAttribute('role','button');handle.setAttribute('aria-label',`${index?'Увеличить':'Уменьшить'} окно линзы · ${Math.round(months*10)/10} мес.`);handle.onkeydown=event=>{if(!['Enter',' ','ArrowLeft','ArrowRight'].includes(event.key))return;event.preventDefault();event.stopPropagation();const range=moveLens(+center-months*monthMs/2,+center+months*monthMs/2,(event.key==='ArrowLeft'?-1:1)*monthMs,index?'right':'left',lensBounds.min,lensBounds.max,monthMs,24*monthMs);center=new Date((range.start+range.end)/2);months=(range.end-range.start)/monthMs;updateLensView(true);};});
       band.append(left,right);attLine.append(band);
 
       updateLensView();
       requestAnimationFrame(fitTimelineLabels);
 
     }
-    function updateLensView(){
+    function updateLensView(syncGraph=false){
       if(!lensBounds)return;
       const half=months*monthMs/2;center=new Date(Math.max(lensBounds.min+half,Math.min(lensBounds.max-half,+center)));
       const span=lensBounds.max-lensBounds.min,c=(+center-lensBounds.min)/span*100,w=months*monthMs/span*100;
@@ -316,6 +335,7 @@ const Matrix28 = (() => {
       upper.setAttribute('aria-valuetext',label(center));lower.setAttribute('aria-label',`Фокус на шкале внимания: ${label(center)}`);
       attLine.querySelectorAll('.mx-lens-year').forEach(n=>n.classList.toggle('current',Number(n.textContent)===center.getFullYear()));
       attLine.querySelectorAll('.mx-handle').forEach((n,i)=>n.setAttribute('aria-label',`${i?'Увеличить':'Уменьшить'} окно линзы · ${Math.round(months*10)/10} мес.`));
+      if(syncGraph)syncGraphToLens();else applyLensFocus();
     }
     function fitTimelineLabels(){
       if(!calLine.isConnected||!calLine.clientWidth)return;

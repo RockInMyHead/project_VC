@@ -5,6 +5,8 @@
 .matrix28 .mx-map path.mx-edge.edge-inconclusive{stroke:var(--edge-inconclusive);stroke-dasharray:7 5}
 .matrix28 .mx-map path.mx-edge.edge-pending{stroke:var(--edge-pending);stroke-width:2;stroke-dasharray:5 7}
 .matrix28 .mx-map path.mx-edge.edge-selected{stroke-width:4.5}
+.matrix28 .mx-map path.mx-edge.outside-focus{opacity:.28}
+.matrix28 .mx-node.outside-focus{opacity:.38}
 .matrix28 .mx-node.outcome-success .mx-node-dot,.matrix28 .mx-node.outcome-success.selected .mx-node-dot{background:var(--edge-success);color:#fff;box-shadow:0 0 0 5px #2586532b}
 .matrix28 .mx-node.outcome-failure .mx-node-dot,.matrix28 .mx-node.outcome-failure.selected .mx-node-dot{background:var(--edge-failure);color:#fff;box-shadow:0 0 0 5px #c94b4b2b}
 .matrix28 .mx-node.outcome-inconclusive .mx-node-dot,.matrix28 .mx-node.outcome-inconclusive.selected .mx-node-dot{background:var(--edge-inconclusive);color:#fff;box-shadow:0 0 0 5px #b47a242b}

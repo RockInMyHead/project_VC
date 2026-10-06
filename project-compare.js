@@ -34,13 +34,13 @@ const ProjectCompare = (() => {
       seen.add(stage.public_id);
       depthMax = Math.max(depthMax, depth);
       const rows = children.get(stage.public_id).map(child => place(child, depth + 1)).filter(row => row !== null);
-      const y = rows.length ? (rows[0] + rows.at(-1)) / 2 : 110 + leaf++ * 106;
-      points.set(stage.public_id, {x: 72 + depth * 142, y});
+      const y = rows.length ? (rows[0] + rows.at(-1)) / 2 : 85 + leaf++ * 72;
+      points.set(stage.public_id, {x: 72 + depth * 112, y});
       return y;
     }
     roots.forEach(stage => place(stage, 0));
     stages.forEach(stage => { if (!seen.has(stage.public_id)) place(stage, 0); });
-    return {points, width: Math.max(650, 72 + depthMax * 142 + 340), height: Math.max(330, 110 + Math.max(0, leaf - 1) * 106 + 250)};
+    return {points, width: Math.max(420, 72 + depthMax * 112 + 105), height: Math.max(400, 85 + Math.max(0, leaf - 1) * 72 + 95)};
   }
 
   function graph(project, detail, openProject) {
@@ -61,12 +61,11 @@ const ProjectCompare = (() => {
 
     const {points, width, height} = layout(stages);
     const viewport = el('div', 'compare-graph-scroll');
-    viewport.tabIndex = 0;
-    viewport.setAttribute('aria-label', `Граф проекта «${project.name}». Прокручивается по горизонтали и вертикали.`);
+    viewport.setAttribute('aria-label', `Граф проекта «${project.name}».`);
     const surface = el('div', 'compare-graph');
-    surface.style.width = `${width}px`;
+    surface.style.width = '100%';
     surface.style.height = `${height}px`;
-    const paths = svg('svg', {viewBox: `0 0 ${width} ${height}`, width, height, 'aria-hidden': 'true'});
+    const paths = svg('svg', {viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: 'none', 'aria-hidden': 'true'});
     stages.forEach(stage => {
       const point = points.get(stage.public_id);
       const parent = points.get(stage.parent_public_id);
@@ -80,8 +79,10 @@ const ProjectCompare = (() => {
       const point = points.get(stage.public_id);
       if (!point) return;
       const node = el('div', `compare-node compare-node-${stage.status || 'planned'}`);
-      node.style.left = `${point.x}px`;
-      node.style.top = `${point.y}px`;
+      node.style.left = `${point.x / width * 100}%`;
+      node.style.top = `${point.y / height * 100}%`;
+      if (point.x / width > .54) node.classList.add('is-right');
+      if (point.y / height > .5) node.classList.add('is-bottom');
       const number = button(String(stage.position || index + 1), 'compare-number', () => {
         nodes.forEach(other => {
           if (other === node) return;
