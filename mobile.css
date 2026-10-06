@@ -117,5 +117,6 @@
  body.matrix28-page .matrix28 .mx-zoom-hint{display:none}
  body.matrix28-page .matrix28 .mx-map-scroll{width:100%;max-width:100%;height:340px;min-height:300px;overflow:auto}
  body.matrix28-page .matrix28 .mx-inspector{min-height:0!important;max-height:none!important}
+ body.matrix28-page .matrix28 .mx-inspector:not(.is-user-open){display:none!important}
  body.matrix28-page .matrix28 .mx-measures{grid-template-columns:minmax(0,1fr);max-width:100%}
 }

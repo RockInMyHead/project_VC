@@ -204,7 +204,7 @@ const Matrix28 = (() => {
         const edgeOutcome=['success','failure','inconclusive'].includes(s.outcome)?s.outcome:'pending';
         lines.append(svg('path',{d:'M '+parent.x+' '+parent.y+' C '+(parent.x+bend)+' '+parent.y+', '+(p.x-bend)+' '+p.y+', '+p.x+' '+p.y,class:`mx-edge edge-${edgeOutcome}${s.public_id===selected?.public_id?' edge-selected':''}`,'data-stage-id':s.public_id}));
         const dim=query&&!((s.title||'')+' '+(s.description||'')).toLowerCase().includes(query);
-        const selectStage=event=>{const keyboard=event?.detail===0;selected=s;center=stageDate(s)||center;draw();scrollToSelected();if(keyboard)[...map.querySelectorAll('.mx-node-dot')].find(button=>button.dataset.stageId===s.public_id)?.focus();};
+        const selectStage=event=>{const keyboard=event?.detail===0;selected=s;center=stageDate(s)||center;inspector.classList.add('is-user-open');draw();scrollToSelected();if(window.matchMedia('(max-width: 760px)').matches)requestAnimationFrame(()=>inspector.scrollIntoView({block:'nearest'}));if(keyboard)[...map.querySelectorAll('.mx-node-dot')].find(button=>button.dataset.stageId===s.public_id)?.focus();};
         const n=el('div','mx-node '+s.status+' outcome-'+edgeOutcome+(selected?.public_id===s.public_id?' selected':'')+(dim?' dimmed':''));
         n.dataset.stageId=s.public_id;
         n.style.left=p.x/mapWidth*100+'%';n.style.top=p.y/mapHeight*100+'%';n.setAttribute('role','group');n.setAttribute('aria-label',s.title+', '+state[s.status]);
