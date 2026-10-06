@@ -179,3 +179,15 @@ body.matrix28-page .workspace .mx-inspector .mx-edit-stage:hover{background:var(
 .matrix28 .mx-ugt-simple .mx-ugt-step.current,.matrix28 .mx-ugt-simple .mx-ugt-step.current:hover{transform:none}
 .matrix28 .mx-ugt-simple .mx-ugt-step.current:before{left:0}
 .matrix28 .mx-ugt-simple .mx-ugt-step.current b{top:0;width:42px;text-align:center;line-height:38px}
+
+/* The time lens shows which real project events are inside its movable window. */
+.matrix28 .mx-lens-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:7px;padding-top:9px;border-top:1px solid var(--palette-line);color:var(--palette-muted);font-size:12px}
+.matrix28 .mx-lens-summary strong{color:var(--palette-primary);font-size:13px;font-weight:750;text-transform:capitalize}
+.matrix28 .mx-lens-events{display:flex;align-items:center;gap:6px;min-width:0;max-width:100%;margin-top:8px;overflow-x:auto;scrollbar-width:thin}
+.matrix28 .mx-lens-event{flex:none;max-width:190px;min-height:29px;padding:5px 9px;border:1px solid var(--palette-line);border-radius:7px;background:var(--palette-paper);color:var(--palette-primary);font-size:11px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.matrix28 .mx-lens-event.selected{border-color:var(--palette-primary);background:var(--palette-soft)}
+.matrix28 .mx-lens-event:hover{border-color:var(--palette-primary)}
+.matrix28 .mx-lens-more{color:var(--palette-muted);font-size:11px;white-space:nowrap}
+.matrix28 .mx-node.outside-focus .mx-node-text{display:none}
+.matrix28 .mx-node.outside-focus .mx-node-dot{opacity:.7}
+@media(max-width:700px){.matrix28 .mx-timeline.mx-timeline-minimal{padding:16px 14px 14px}.matrix28 .mx-lens-summary{align-items:flex-start;flex-direction:column;gap:2px}.matrix28 .mx-lens-event{max-width:160px}}

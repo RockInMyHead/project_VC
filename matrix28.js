@@ -157,7 +157,9 @@ const Matrix28 = (() => {
     const attRow=el('div','mx-time-row mx-att-row'),attLine=el('div','mx-attention');
     attRow.append(attLine);timeRows.append(calRow,attRow);
     timeBody.append(timeRows);
-    timeline.append(timeBody);
+    const lensSummary=el('div','mx-lens-summary');lensSummary.setAttribute('aria-live','polite');
+    const lensEvents=el('div','mx-lens-events');lensEvents.setAttribute('aria-label','События в выбранном периоде');
+    timeline.append(timeBody,lensSummary,lensEvents);
     const measures=el('div','mx-measures');measures.append(ugtScale,timeline);
     const extra=el('section','mx-extra');extra.hidden=true;const extraBody=el('div','mx-extra-body');extra.append(extraBody);
     const views=[['Материалы',()=>WorkflowUI.materials(extraBody,data)],['Команда',()=>WorkflowUI.team(extraBody,data)],['История',()=>WorkflowUI.history(extraBody,data)],['О проекте',()=>{
@@ -217,6 +219,7 @@ const Matrix28 = (() => {
         caption.append(btn('Открыть событие →','mx-node-open',()=>{selectStage();openEvent(s);}));
         const dot=btn('D'+(s.position||'·'),'mx-node-dot',selectStage);
         dot.dataset.stageId=s.public_id;
+        dot.title=`D${s.position||'·'} · ${s.title}`;
         dot.setAttribute('aria-label',`Событие D${s.position||'·'}: ${s.title}, ${state[s.status]}`);
         dot.setAttribute('aria-pressed',String(selected?.public_id===s.public_id));
         n.append(dot,caption);map.append(n);
@@ -238,7 +241,7 @@ const Matrix28 = (() => {
         const distance=Math.abs(+stageDate(stage)-center);
         return !best||distance<best.distance||distance===best.distance&&stage===selected?{stage,distance}:best;
       },null).stage;
-      if(nearest!==selected){selected=nearest;drawGraph();drawInspector();scrollToSelected();}
+      if(nearest!==selected){selected=nearest;drawGraph();drawInspector();updateLensView();scrollToSelected();}
       else applyLensFocus();
     }
     function drawInspector(){
@@ -283,7 +286,7 @@ const Matrix28 = (() => {
       const paint=()=>{
         frame=0;
         const range=moveLens(initialStart,initialEnd,(pendingX-x)/rect.width*duration,kind,lensBounds.min,lensBounds.max,monthMs,24*monthMs);
-        center=new Date((range.start+range.end)/2);months=(range.end-range.start)/monthMs;updateLensView(true);
+        center=new Date((range.start+range.end)/2);months=(range.end-range.start)/monthMs;updateLensView();
       };
       const move=e=>{if(e.pointerId!==id)return;pendingX=e.clientX;if(!frame)frame=requestAnimationFrame(paint);};
       const cleanup=()=>{
@@ -293,7 +296,7 @@ const Matrix28 = (() => {
         if(target.hasPointerCapture(id))target.releasePointerCapture(id);
         host._lensDragCleanup=null;
       };
-      const finish=e=>{if(e.pointerId!==id)return;pendingX=e.clientX;cancelAnimationFrame(frame);paint();cleanup();};
+      const finish=e=>{if(e.pointerId!==id)return;pendingX=e.clientX;cancelAnimationFrame(frame);paint();cleanup();syncGraphToLens();};
       const cancel=()=>{center=new Date(initialCenter);months=initialMonths;selected=initialSelected;cleanup();updateLensView();drawGraph();drawInspector();scrollToSelected();};
       target.setPointerCapture(id);
       target.addEventListener('pointermove',move);target.addEventListener('pointerup',finish);target.addEventListener('pointercancel',cancel);target.addEventListener('lostpointercapture',cancel);window.addEventListener('blur',cancel);
@@ -302,11 +305,12 @@ const Matrix28 = (() => {
     function drawTimeline(){
       if(!dated.length){
         timeBody.replaceChildren(el('p','mx-timeline-empty','Добавьте контрольные даты событий, чтобы увидеть развитие проекта на шкале времени.'));
+        lensSummary.replaceChildren();lensEvents.replaceChildren();
         return;
       }
       calLine.replaceChildren();attLine.replaceChildren();
       const first=dated[0]||center,last=dated.at(-1)||center;
-      const begin=new Date(first.getFullYear()-1,0,1),end=new Date(last.getFullYear()+1,11,1),totalMonths=Math.max(1,(end.getFullYear()-begin.getFullYear())*12+end.getMonth()-begin.getMonth());
+      const begin=new Date(first.getFullYear(),first.getMonth()-6,1),end=new Date(last.getFullYear(),last.getMonth()+7,1),totalMonths=Math.max(1,(end.getFullYear()-begin.getFullYear())*12+end.getMonth()-begin.getMonth());
       calendarSpanDays=(end-begin)/86400000;
       const pct=d=>Math.max(0,Math.min(100,(d-begin)/(end-begin)*100));
       lensBounds={min:+begin,max:+end};
@@ -318,12 +322,13 @@ const Matrix28 = (() => {
       const focusSize=size,focusLeft=centerX-size/2;
       const scaled=pct;
       const ticks=[];
-      for(let i=0;i<=totalMonths;i+=Math.max(1,Math.ceil(totalMonths/8)))ticks.push(new Date(begin.getFullYear(),begin.getMonth()+i,1));
+      const tickCount=Math.max(2,Math.min(7,Math.floor((calLine.clientWidth||640)/110)));
+      for(let i=0;i<=totalMonths;i+=Math.max(1,Math.ceil(totalMonths/tickCount)))ticks.push(new Date(begin.getFullYear(),begin.getMonth()+i,1));
       if(+ticks.at(-1)!==+end)ticks.push(end);
       ticks.forEach((d,i)=>{const tick=el('span','mx-tick');tick.style.left=(i===0?0:i===ticks.length-1?100:scaled(d))+'%';tick.dataset.labelPriority=String(i===0||i===ticks.length-1?2:1);tick.append(el('i'),el('small','',i===0||i===ticks.length-1?String(d.getFullYear()):d.toLocaleDateString('ru-RU',{month:'short',year:'2-digit'})));calLine.append(tick);});
       const calWindow=el('div','mx-calendar-window');calWindow.style.left=focusLeft+'%';calWindow.style.width=focusSize+'%';calWindow.onpointerdown=e=>drag(e,'center');calLine.append(calWindow);
       const cursor=el('span','mx-lens-cursor');cursor.style.left=centerX+'%';cursor.setAttribute('aria-hidden','true');calLine.append(cursor);
-      stages.filter(stageDate).forEach(s=>{const mark=btn('','mx-calendar-event'+(s===selected?' selected':''),()=>{selected=s;center=stageDate(s);draw();scrollToSelected();});mark.style.left=scaled(stageDate(s))+'%';mark.title=`D${s.position} · ${s.title}`;mark.setAttribute('aria-label',`Фокус на событии D${s.position}: ${s.title}`);calLine.append(mark);});
+      stages.filter(stageDate).forEach(s=>{const mark=btn('','mx-calendar-event'+(s===selected?' selected':''),()=>{selected=s;center=stageDate(s);draw();scrollToSelected();});mark.dataset.stageId=s.public_id;mark.style.left=scaled(stageDate(s))+'%';mark.title=`D${s.position} · ${s.title}`;mark.setAttribute('aria-label',`Фокус на событии D${s.position}: ${s.title}`);calLine.append(mark);});
       const centerKey=(event,selector)=>{const delta={ArrowLeft:-1,ArrowRight:1,PageUp:-12,PageDown:12}[event.key];if(delta===undefined&&event.key!=='Home')return;event.preventDefault();center=event.key==='Home'?new Date():new Date(center.getFullYear(),center.getMonth()+delta,1);updateLensView(true);};
       const describeCenter=(node,selector)=>{node.tabIndex=0;node.setAttribute('role',selector==='calendar'?'slider':'group');node.setAttribute('aria-label',selector==='calendar'?'Дата фокуса на календаре':`Фокус на шкале внимания: ${label(center)}`);if(selector==='calendar'){node.setAttribute('aria-valuemin','0');node.setAttribute('aria-valuemax',String(totalMonths));node.setAttribute('aria-valuenow',String(Math.max(0,Math.min(totalMonths,(center.getFullYear()-begin.getFullYear())*12+center.getMonth()-begin.getMonth()))));node.setAttribute('aria-valuetext',label(center));}node.onkeydown=event=>centerKey(event,selector);};
       describeCenter(calWindow,'calendar');
@@ -356,6 +361,20 @@ const Matrix28 = (() => {
       upper.setAttribute('aria-valuetext',label(center));lower.setAttribute('aria-label',`Фокус на шкале внимания: ${label(center)}`);
       attLine.querySelectorAll('.mx-lens-year').forEach(n=>n.classList.toggle('current',Number(n.textContent)===center.getFullYear()));
       attLine.querySelectorAll('.mx-handle').forEach((n,i)=>n.setAttribute('aria-label',`${i?'Увеличить':'Уменьшить'} окно линзы · ${Math.round(months*10)/10} мес.`));
+      const from=+center-half,to=+center+half;
+      const visible=stages.filter(stage=>stageDate(stage)&&+stageDate(stage)>=from&&+stageDate(stage)<=to).sort((a,b)=>+stageDate(a)-+stageDate(b));
+      const nearest=!visible.length?stages.filter(stageDate).sort((a,b)=>Math.abs(+stageDate(a)-center)-Math.abs(+stageDate(b)-center))[0]:null;
+      const short=value=>new Date(value).toLocaleDateString('ru-RU',{month:'short',year:'numeric'});
+      lensSummary.replaceChildren(el('strong','',`${short(from)} — ${short(to)}`),el('span','',visible.length?`${visible.length} ${visible.length===1?'событие':visible.length<5?'события':'событий'} в фокусе`:'Нет событий в этом периоде'));
+      lensEvents.replaceChildren();
+      (visible.length?visible:nearest?[nearest]:[]).slice(0,6).forEach(stage=>{
+        const chip=btn(`D${stage.position||'·'} · ${stage.title}`,'mx-lens-event'+(stage===selected?' selected':''),()=>{selected=stage;center=stageDate(stage);draw();scrollToSelected();});
+        chip.title=`${shortDate(stageDate(stage))} · ${stage.title}`;
+        if(nearest)chip.setAttribute('aria-label',`Ближайшее событие: ${stage.title}`);
+        lensEvents.append(chip);
+      });
+      if(visible.length>6)lensEvents.append(el('span','mx-lens-more',`+${visible.length-6}`));
+      calLine.querySelectorAll('.mx-calendar-event').forEach(mark=>mark.classList.toggle('selected',mark.dataset.stageId===selected?.public_id));
       if(syncGraph)syncGraphToLens();else applyLensFocus();
     }
     function fitTimelineLabels(){
