@@ -3,6 +3,14 @@ const Matrix28 = (() => {
   const el=(tag,cls,text)=>{const n=document.createElement(tag);n.className=cls||'';if(text!==undefined)n.textContent=text;return n;};
   const btn=(text,cls,fn)=>{const n=el('button',cls,text);n.type='button';n.onclick=fn;return n;};
   const svg=(tag,attributes)=>{const n=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attributes).forEach(([key,value])=>n.setAttribute(key,value));return n;};
+  function actionIcon(kind){
+    const icon=svg('svg',{viewBox:'0 0 24 24',fill:'none',stroke:'currentColor','stroke-width':'1.8','stroke-linecap':'round','stroke-linejoin':'round','aria-hidden':'true',focusable:'false'});
+    if(kind==='search')icon.append(svg('circle',{cx:'10.8',cy:'10.8',r:'6.3'}),svg('path',{d:'m16 16 4.2 4.2'}));
+    if(kind==='filter')icon.append(svg('path',{d:'M4 7h16M4 17h16'}),svg('circle',{cx:'9',cy:'7',r:'2',fill:'currentColor',stroke:'none'}),svg('circle',{cx:'16',cy:'17',r:'2',fill:'currentColor',stroke:'none'}));
+    if(kind==='add')icon.append(svg('rect',{x:'3.5',y:'3.5',width:'17',height:'17',rx:'5'}),svg('path',{d:'M12 8v8M8 12h8'}));
+    return icon;
+  }
+  function actionButton(label,kind,cls,fn){const button=btn('',cls,fn);button.append(actionIcon(kind),el('span','',label));return button;}
   const dt=value=>{const d=value?new Date(value):null;return d&&!Number.isNaN(d.getTime())?d:null;};
   const label=d=>d?d.toLocaleDateString('ru-RU',{month:'long',year:'numeric'}):'Срок не указан';
   const shortDate=d=>d?d.toLocaleDateString('ru-RU',{day:'numeric',month:'long'}):'Не назначена';
@@ -49,13 +57,14 @@ const Matrix28 = (() => {
     const facts=el('div','mx-project-facts');
     facts.append(el('span','',`УГТ ${project.ugt_level||1}`),el('span','',`${stages.filter(s=>s.status==='completed').length} завершено`),el('span','',`${stages.filter(s=>s.status==='in_progress').length} в работе`),el('span','',`${stages.filter(s=>s.status==='planned').length} в плане`));
     title.append(facts);
-    const search=btn('⌕  Поиск','mx-tool',()=>{searchField.hidden=!searchField.hidden;if(!searchField.hidden)searchInput.focus();});
+    const search=actionButton('Поиск','search','mx-tool mx-action',()=>{searchField.hidden=!searchField.hidden;search.classList.toggle('is-open',!searchField.hidden);search.setAttribute('aria-expanded',String(!searchField.hidden));if(!searchField.hidden)searchInput.focus();});
     const availableStatuses=[['completed','Завершено'],['in_progress','В работе'],['planned','В плане']].filter(([status])=>stages.some(stage=>stage.status===status));
-    const filters=btn('▤  Фильтры','mx-tool',()=>{filterField.hidden=!filterField.hidden;filters.setAttribute('aria-expanded',String(!filterField.hidden));});
+    const filters=actionButton('Фильтры','filter','mx-tool mx-action',()=>{filterField.hidden=!filterField.hidden;filters.classList.toggle('is-open',!filterField.hidden);filters.setAttribute('aria-expanded',String(!filterField.hidden));});
     filters.hidden=availableStatuses.length<2;
+    search.setAttribute('aria-expanded','false');
     filters.setAttribute('aria-expanded','false');
     heroActions.append(search,filters);
-    if(data.can_edit)heroActions.append(btn('+ Событие','mx-tool mx-add',()=>WorkflowUI.stage(data)));
+    if(data.can_edit){const add=actionButton('Событие','add','mx-tool mx-add mx-action',()=>WorkflowUI.stage(data));add.setAttribute('aria-label','Добавить событие');heroActions.append(add);}
     hero.append(title,heroActions);
     const sectionTabs=el('nav','mx-section-tabs');sectionTabs.setAttribute('aria-label','Разделы проекта');
     const utility=el('div','mx-utility'),searchField=el('label','mx-search'),searchInput=el('input','');
