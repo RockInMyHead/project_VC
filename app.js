@@ -585,7 +585,7 @@ function renderContacts() {
     copy.append(name, sub);
     button.append(avatar, copy);
     if (contact.unread_count) { const unread = document.createElement('b'); unread.className = 'chat-unread'; unread.textContent = contact.unread_count; button.append(unread); }
-    button.onclick = () => openChat(contact.public_id);
+    button.onclick = () => openChat(contact.public_id, {reveal: true});
     list.append(button);
   });
 }
@@ -634,6 +634,7 @@ async function showMessages() {
   $('#workspace main > header').hidden = true;
   $('#projectDetail') && ($('#projectDetail').hidden = true);
   $('#messagesPage').hidden = false;
+  setMobileChatView('list');
   setWorkspaceNav('messagesNav');
   location.hash = 'messages';
   try {
@@ -644,7 +645,11 @@ async function showMessages() {
   }
 }
 
-async function openChat(id) {
+function setMobileChatView(view) {
+  $('#messagesPage .messenger').dataset.mobileView = view;
+}
+
+async function openChat(id, {reveal = false} = {}) {
   if(activeChatId!==id){if(activeChatId){const body=$('#chatInput').value;if(body)chatDrafts.set(activeChatId,body);else chatDrafts.delete(activeChatId);}$('#chatInput').value=chatDrafts.get(id)||'';}
   activeChatId = id;
   saveChatInput();
@@ -655,10 +660,12 @@ async function openChat(id) {
     const data = await api(`/api/messages/${encodeURIComponent(id)}`);
     if (request !== chatRequest) return;
     const head = $('#chatConversationHead');
-    head.replaceChildren();
+    const back = $('#chatBack');
     const name = document.createElement('strong'); name.textContent = data.contact.full_name;
     const organization = document.createElement('span'); organization.textContent = data.contact.organization || 'Участник платформы';
-    head.append(name, organization);
+    const identity = document.createElement('div'); identity.className = 'chat-conversation-identity';
+    identity.append(name, organization);
+    head.replaceChildren(back, identity);
     const history = $('#chatHistory');
     history.replaceChildren();
     if (!data.items.length) {
@@ -673,6 +680,7 @@ async function openChat(id) {
     history.scrollTop = history.scrollHeight;
     $('#chatInput').disabled = false;
     $('#chatForm button[type="submit"]').disabled = false;
+    if (reveal) setMobileChatView('conversation');
     await loadContacts();
   } catch (error) {
     $('#chatMessage').textContent = error.message;
@@ -734,6 +742,7 @@ $('#adminBackNav').onclick = () => { location.href='./admin.html'; };
 $('#notificationsNav').onclick = () => showActivityPage('notifications');
 $('#changesNav').onclick = () => showActivityPage('changes');
 $('#chatSearch').oninput = renderContacts;
+$('#chatBack').onclick = () => setMobileChatView('list');
 $('#chatForm').onsubmit = async (event) => {
   event.preventDefault();
   const input = $('#chatInput');

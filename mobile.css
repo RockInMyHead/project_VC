@@ -26,3 +26,33 @@
  .workspace>aside .wordmark,.workspace>aside .workspace-nav button:not(.active),.workspace>aside>div button{color:#d5e0d7!important}
  .admin-sidebar nav button:not(.is-active),.admin-account button{color:#d5e0d7!important}
 }
+/* Mobile messenger: a full-height dialog list or one conversation at a time. */
+.chat-list-heading,.chat-back{display:none}
+.chat-conversation-identity{display:grid;gap:3px;min-width:0}
+@media (max-width:760px){
+ .messages-page{width:100%;margin:0}
+ .messages-page .messenger{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);height:calc(100dvh - 142px);min-height:380px;max-height:none;border:0;border-radius:0;box-shadow:none}
+ .messages-page .messenger[data-mobile-view="list"] .chat-main{display:none}
+ .messages-page .messenger[data-mobile-view="conversation"] .chat-contacts{display:none}
+ .messages-page .messenger[data-mobile-view="conversation"] .chat-main{display:grid;grid-template-rows:auto minmax(0,1fr) auto;min-height:0}
+ .messages-page .messenger[data-mobile-view="list"] .chat-contacts,.workspace .messages-page .chat-contacts{display:flex;flex-direction:column;min-height:0;max-height:none;width:100%;border:0;overflow:hidden}
+ .chat-list-heading{display:block;padding:12px 15px 8px;color:var(--palette-ink);font-size:23px;font-weight:750;letter-spacing:-.035em}
+ .messages-page .chat-search-label{flex:none;padding:8px 12px 12px;border-bottom:1px solid var(--palette-line);font-size:0}
+ .messages-page .chat-search-label input{min-height:44px;font-size:14px}
+ .workspace .messages-page .chat-contacts .chat-contacts-list{display:flex;flex:1;flex-direction:column;gap:1px;min-height:0;width:100%;max-width:100%;overflow-x:hidden;overflow-y:auto;padding:5px 4px;-webkit-overflow-scrolling:touch}
+ .workspace .messages-page .chat-contacts .chat-contact{flex:none;display:flex;align-items:center;width:100%;min-width:0;max-width:none;min-height:70px;padding:10px 11px;border-radius:9px}
+ .messages-page .chat-avatar{width:46px;height:46px;border-radius:50%;font-size:17px}
+ .messages-page .chat-contact-copy strong{font-size:15px}.messages-page .chat-contact-copy small{font-size:13px}
+ .messages-page .chat-unread{flex:none}
+ .messages-page .chat-conversation-head{display:grid;grid-template-columns:38px minmax(0,1fr);align-items:center;gap:9px;min-height:62px;padding:8px 12px}
+ .messages-page .chat-back{display:grid;place-items:center;width:38px;height:38px;padding:0;border:0;border-radius:50%;background:var(--palette-soft);color:var(--palette-primary);font-size:22px;line-height:1}
+ .messages-page .chat-conversation-identity strong,.messages-page .chat-conversation-identity span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .messages-page .chat-history{min-height:0;padding:14px 10px;overflow-y:auto}
+ .messages-page .chat-compose{padding:9px 10px calc(9px + env(safe-area-inset-bottom))}
+ .messages-page .chat-compose textarea{min-height:45px;max-height:100px;padding:10px 12px}
+ .messages-page .chat-compose>div{margin-top:5px}.messages-page .chat-compose .primary{min-height:38px;padding:8px 12px}
+}
+@media (max-width:760px){
+ .workspace .messages-page .chat-contacts{align-items:stretch;justify-content:flex-start}
+ .workspace .messages-page .chat-contacts>.chat-list-heading{display:block!important}
+}
