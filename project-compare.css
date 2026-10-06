@@ -28,7 +28,7 @@
 .compare-ruler-tick{position:absolute;top:10px;transform:translateX(-50%);color:var(--palette-muted);font-size:10px;font-weight:650;font-variant-numeric:tabular-nums;white-space:nowrap}
 .compare-ruler-tick::before{content:'';position:absolute;top:-8px;left:50%;height:5px;width:1px;background:var(--palette-muted)}
 .compare-graph-scroll{overflow:visible}
-.compare-graph{position:relative;min-height:300px;background-color:var(--palette-paper);background-image:linear-gradient(var(--palette-line) 1px,transparent 1px),linear-gradient(90deg,var(--palette-line) 1px,transparent 1px);background-size:36px 36px}
+.compare-graph{position:relative;width:100%;min-height:300px;background-color:var(--palette-paper);background-image:linear-gradient(var(--palette-line) 1px,transparent 1px),linear-gradient(90deg,var(--palette-line) 1px,transparent 1px);background-size:36px 36px}
 .compare-graph>svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .compare-graph path{fill:none;stroke:var(--palette-sage);stroke-width:2}
 .compare-graph path.is-complete{stroke:var(--palette-primary);stroke-width:2.5}
@@ -57,3 +57,11 @@ html[data-theme="dark"] .compare-number{border-color:#111a14;color:#14200f}
 html[data-theme="dark"] .compare-node-in_progress .compare-number{color:#edf4e6}
 @media(max-width:900px){.compare-graphs{grid-template-columns:1fr}}
 @media(max-width:760px){.compare-page{padding-bottom:35px}.compare-project-head{gap:10px;padding:16px}.compare-project-open{margin-left:auto}.compare-event-card{width:min(255px,80vw)}.compare-rulers{padding-inline:16px}}
+@media(max-width:760px){
+  .compare-heading{display:block}
+  .compare-heading p{margin-top:8px}
+  .compare-graph-scroll{position:relative;max-width:100%;overflow-x:auto;overflow-y:hidden;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:var(--palette-sage) transparent}
+  .compare-graph{width:max(100%,var(--compare-map-width));min-width:720px}
+  .compare-number{max-width:none}
+  .compare-graph-scroll::after{content:'Проведите по графу →';position:sticky;left:12px;bottom:10px;display:inline-block;z-index:6;width:max-content;margin-top:-30px;padding:5px 8px;border:1px solid var(--palette-line);border-radius:6px;background:var(--palette-paper);color:var(--palette-muted);font-size:10px;pointer-events:none}
+}

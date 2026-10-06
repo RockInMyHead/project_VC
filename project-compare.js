@@ -90,7 +90,9 @@ const ProjectCompare = (() => {
     const viewport = el('div', 'compare-graph-scroll');
     viewport.setAttribute('aria-label', `Граф проекта «${project.name}».`);
     const surface = el('div', 'compare-graph');
-    surface.style.width = '100%';
+    // Keep the graph's logical coordinates intact when the card is narrower
+    // than its tree. The mobile viewport scrolls instead of shrinking nodes.
+    surface.style.setProperty('--compare-map-width', `${Math.max(720, width)}px`);
     surface.style.height = `${height}px`;
     const paths = svg('svg', {viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: 'none', 'aria-hidden': 'true'});
     stages.forEach(stage => {
