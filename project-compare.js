@@ -40,7 +40,28 @@ const ProjectCompare = (() => {
     }
     roots.forEach(stage => place(stage, 0));
     stages.forEach(stage => { if (!seen.has(stage.public_id)) place(stage, 0); });
-    return {points, width: Math.max(420, 72 + depthMax * 112 + 105), height: Math.max(400, 85 + Math.max(0, leaf - 1) * 72 + 95)};
+    return {points, width: Math.max(420, 72 + depthMax * 112 + 105), height: Math.max(300, 85 + Math.max(0, leaf - 1) * 72 + 95)};
+  }
+
+  function ruler(label, value, total, marks, valueLabel) {
+    const row = el('div', 'compare-ruler');
+    row.setAttribute('aria-label', `${label}: ${valueLabel}`);
+    const heading = el('div', 'compare-ruler-heading');
+    heading.append(el('span', '', label), el('strong', '', valueLabel));
+    const track = el('div', 'compare-ruler-track');
+    const progress = total ? Math.max(0, Math.min(100, value / total * 100)) : 0;
+    const fill = el('span', 'compare-ruler-fill');
+    fill.style.width = `${progress}%`;
+    const marker = el('span', 'compare-ruler-marker');
+    marker.style.left = `${progress}%`;
+    track.append(fill, marker);
+    marks.forEach(({label: tickLabel, position}) => {
+      const tick = el('span', 'compare-ruler-tick', tickLabel);
+      tick.style.left = `${total ? position / total * 100 : 0}%`;
+      track.append(tick);
+    });
+    row.append(heading, track);
+    return row;
   }
 
   function graph(project, detail, openProject) {
@@ -48,11 +69,17 @@ const ProjectCompare = (() => {
     const section = el('section', 'compare-project');
     const heading = el('div', 'compare-project-head');
     const title = el('div');
+    title.title = project.name;
     title.append(el('span', 'compare-project-code', project.code), el('h2', '', project.name));
-    const metrics = el('div', 'compare-project-metrics');
-    metrics.append(el('span', '', `УГТ ${project.ugt_level}`), el('span', '', `${project.completed_stage_count || 0} из ${stages.length} завершено`));
-    heading.append(title, metrics, button('Открыть проект ↗', 'compare-project-open', () => openProject(project.public_id)));
-    section.append(heading);
+    heading.append(title, button('Открыть проект ↗', 'compare-project-open', () => openProject(project.public_id)));
+    const completed = stages.filter(stage => stage.status === 'completed').length;
+    const ugt = Math.max(1, Math.min(9, Number(project.ugt_level) || 1));
+    const rulers = el('div', 'compare-rulers');
+    rulers.append(
+      ruler('Готовность технологии', ugt - 1, 8, Array.from({length: 9}, (_, index) => ({label: String(index + 1), position: index})), `УГТ ${ugt}`),
+      ruler('Завершено этапов', stages.length ? completed / stages.length * 100 : 0, 100, [0, 25, 50, 75, 100].map(percent => ({label: `${percent}%`, position: percent})), `${completed} из ${stages.length} · ${stages.length ? Math.round(completed / stages.length * 100) : 0}%`)
+    );
+    section.append(heading, rulers);
 
     if (!stages.length) {
       section.append(el('p', 'compare-empty', 'В этом проекте пока нет событий.'));
