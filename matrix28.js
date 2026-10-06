@@ -52,7 +52,7 @@ const Matrix28 = (() => {
     let center=dt(selected?.due_at)||new Date(),months=3,query='',filter='all',calendarSpanDays=730,lensBounds=null;
     const monthMs=30.4375*86400000;
     const top=el('div','mx-top');
-    top.append(btn('БОК О БОК','mx-brand',showProjectList),btn('ПРОЕКТЫ','mx-breadcrumb',showProjectList),el('span','mx-breadcrumb','/'),el('span','mx-breadcrumb',project.code),el('span','mx-spacer'),el('span','mx-top-state',(data.tree_version?.state==='published'?'ОПУБЛИКОВАНО':'РАБОЧАЯ ВЕРСИЯ')+' · ТЕКУЩИЙ ЭТАП: '+label(center).toUpperCase()));
+    top.append(btn('ПРОЕКТЫ','mx-breadcrumb',showProjectList),el('span','mx-breadcrumb','/'),el('span','mx-breadcrumb',project.code),el('span','mx-spacer'),el('span','mx-top-state',(data.tree_version?.state==='published'?'ОПУБЛИКОВАНО':'РАБОЧАЯ ВЕРСИЯ')+' · ТЕКУЩИЙ ЭТАП: '+label(center).toUpperCase()));
     const hero=el('header','mx-hero'),title=el('div','mx-title'),heroActions=el('div','mx-actions');
     title.append(el('h1','',project.name||project.code),el('p','',project.code+' · '+(project.field||'Научный проект')));
     const facts=el('div','mx-project-facts');
