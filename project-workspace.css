@@ -1,12 +1,12 @@
 /* The project map is a single desktop workspace; long-form content lives in tabs. */
-.matrix28 .mx-measures{display:grid;grid-template-columns:minmax(290px,36%) minmax(0,1fr);gap:12px;min-width:0}
+.matrix28 .mx-measures{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;min-width:0}
 .matrix28 .mx-measures[hidden]{display:none}
 .matrix28 .mx-measures>.mx-ugt-scale,.matrix28 .mx-measures>.mx-timeline{min-width:0;margin:0}
 .matrix28 .mx-inspector-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 0}
 .matrix28 .mx-inspector-summary>div{display:flex;align-items:center;justify-content:space-between;gap:5px;padding:9px;border:1px solid var(--palette-line);border-radius:8px;background:var(--palette-soft);font-size:11px}
 .matrix28 .mx-inspector-summary span{color:var(--palette-muted)}
 .matrix28 .mx-inspector-summary strong{color:var(--palette-primary);white-space:nowrap}
-.matrix28 .mx-inspector-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:auto;padding-top:12px}
+.matrix28 .mx-inspector-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:auto;padding-top:10px}
 .matrix28 .mx-inspector-actions .mx-open,.matrix28 .mx-inspector-actions .mx-edit-stage{width:100%!important;min-height:39px;margin:0!important;padding:8px 10px!important}
 
 @media (min-width:1100px) and (min-height:720px){
@@ -45,23 +45,33 @@
   .matrix28 .mx-map-scroll.is-panning{cursor:grabbing;user-select:none}
   .matrix28 .mx-map-scroll::-webkit-scrollbar{display:none}
   .matrix28 .mx-edge-legend{padding:7px 12px;gap:6px 11px;font-size:10px}
-  body.matrix28-page .workspace .mx-inspector{height:100%;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:14px;scrollbar-width:thin}
-  .matrix28 .mx-inspector h2{font-size:19px!important;margin:8px 0 9px!important}
-  .matrix28 .mx-inspector .mx-label{margin:8px 0 4px}
-  .matrix28 .mx-inspector .mx-body{margin-bottom:7px;line-height:1.4}
-  .matrix28 .mx-inspector .mx-body{display:block;max-height:4.2em;overflow:hidden}
-  .matrix28 .mx-inspector .mx-detail-meta{margin:8px 0}
-  .matrix28 .mx-measures{padding-top:10px;align-items:stretch}
-  .matrix28 .mx-ugt-simple{padding:13px 22px 7px}
-  .matrix28 .mx-ugt-simple .mx-ugt-steps{height:53px;margin:0 15px}
-  .matrix28 .mx-timeline.mx-timeline-minimal{padding:15px 24px 11px}
-  .matrix28 .mx-timeline-minimal .mx-time-rows{gap:2px}
-  .matrix28 .mx-timeline-minimal .mx-calendar{height:35px}
-  .matrix28 .mx-timeline-minimal .mx-attention{height:46px}
+  body.matrix28-page .workspace .mx-inspector{height:100%;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:12px;scrollbar-width:thin}
+  .matrix28 .mx-inspector>*{flex-shrink:0}
+  .matrix28 .mx-inspector-heading{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:space-between;min-height:0;gap:6px}
+  .matrix28 .mx-inspector h2{font-size:18px!important;margin:5px 0 6px!important;line-height:1.2!important}
+  .matrix28 .mx-inspector .mx-label{margin:5px 0 3px}
+  .matrix28 .mx-inspector .mx-body{display:block;max-height:2.8em;overflow:hidden;margin:0 0 5px;line-height:1.4}
+  .matrix28 .mx-inspector .mx-detail-meta{margin:5px 0;padding:6px 0;gap:3px 8px}
+  .matrix28 .mx-inspector .mx-inspector-summary{margin-top:6px}
+  .matrix28 .mx-inspector-actions{padding-top:8px}
+  .matrix28 .mx-inspector-actions .mx-open,.matrix28 .mx-inspector-actions .mx-edit-stage{min-height:36px!important;padding:5px 4px!important;font-size:11px!important;white-space:nowrap}
+  .matrix28 .mx-measures{padding-top:8px;gap:7px;align-items:stretch}
+  .matrix28 .mx-ugt-simple{padding:7px 28px 5px}
+  .matrix28 .mx-ugt-simple .mx-ugt-steps{height:50px;margin:0 18px}
+  .matrix28 .mx-ugt-simple .mx-ugt-step{height:50px}
+  .matrix28 .mx-ugt-simple .mx-ugt-step b{top:31px}
+  .matrix28 .mx-ugt-simple .mx-ugt-step.current b{top:0}
+  .matrix28 .mx-timeline.mx-timeline-minimal{padding:8px 28px 5px}
+  .matrix28 .mx-timeline-minimal .mx-time-rows{gap:0}
+  .matrix28 .mx-timeline-minimal .mx-calendar{height:47px}
+  .matrix28 .mx-timeline-minimal .mx-attention{height:50px}
+  .matrix28 .mx-timeline-minimal .mx-lens-hatch{height:29px}
+  .matrix28 .mx-timeline-minimal .mx-att-window{height:33px}
+  .matrix28 .mx-timeline-minimal .mx-lens-year{top:35px;font-size:11px}
   .matrix28 .mx-extra:not([hidden]){min-height:0;height:100%;overflow-y:auto;padding:18px 22px}
 }
 
 @media (max-width:1099px), (max-height:719px){
-  .matrix28 .mx-measures{grid-template-columns:1fr;gap:10px;margin-top:12px}
+  .matrix28 .mx-measures{gap:10px;margin-top:12px}
   .matrix28 .mx-measures>.mx-ugt-scale,.matrix28 .mx-measures>.mx-timeline{margin:0}
 }
