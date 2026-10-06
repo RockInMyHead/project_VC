@@ -45,6 +45,7 @@ const Matrix28 = (() => {
     document.body.classList.add('project-focus','matrix28-page');
     const compactDemo=project.code==='DEMO-KUMA30';
     host._lensResize?.disconnect();
+    host._mapResize?.disconnect();
     host._lensDragCleanup?.();
     host.className='matrix28'+(compactDemo?' mx-demo-compact':'');host.replaceChildren();
     let selected=stages.find(s=>s.status==='in_progress')||stages[0]||null;
@@ -87,19 +88,21 @@ const Matrix28 = (() => {
     [['ПРОШЛОЕ',dated.length?dated[0].getFullYear()+' — '+(new Date().getFullYear()):'Завершённые этапы'],['ТЕКУЩИЕ ИССЛЕДОВАНИЯ',label(center)],['БУДУЩЕЕ',dated.length?label(dated.at(-1)):'План развития']].forEach(([a,b],i)=>{const x=el('div',i===1?'active':'');x.append(el('b','',a),el('span','',b));eras.append(x);});
     const treeLayout=layout(stages);let mapHeight=treeLayout.height,mapWidth=treeLayout.width;
     const mapScroll=el('div','mx-map-scroll'),map=el('div','mx-map'),lane=el('div','mx-lane'),lines=svg('svg',{viewBox:`0 0 ${mapWidth} ${mapHeight}`,preserveAspectRatio:'none','aria-hidden':'true'});
-    mapScroll.tabIndex=0;mapScroll.setAttribute('aria-label','Дерево решений. Прокручивается по вертикали и горизонтали.');
+    mapScroll.tabIndex=0;mapScroll.setAttribute('aria-label','Дерево решений. Перемещайте карту мышью или клавишами со стрелками, меняйте масштаб кнопками.');
     map.style.height=mapHeight+'px';
     map.style.width=mapWidth+'px';map.style.minWidth=mapWidth+'px';eras.hidden=true;
     let zoom=1;
     const surface=el('div','mx-map-surface'),zoomBar=el('div','mx-zoom-bar');
-    const changeZoom=value=>{setZoom(value);scrollToSelected();};
+    const changeZoom=value=>{mapScroll.dataset.autoFit='false';setZoom(value);scrollToSelected();};
     const zoomOut=btn('−','',()=>changeZoom(zoom/1.2)),zoomValue=btn('100%','mx-zoom-value',()=>changeZoom(1)),zoomIn=btn('+','',()=>changeZoom(zoom*1.2));
     zoomOut.setAttribute('aria-label','Уменьшить масштаб дерева');zoomIn.setAttribute('aria-label','Увеличить масштаб дерева');zoomValue.setAttribute('aria-label','Вернуть масштаб 100%');
-    zoomBar.append(zoomOut,zoomValue,zoomIn,btn('Показать всё','mx-zoom-fit',()=>{
-      const viewportHeight=window.innerWidth<=760?520:window.innerWidth<=1050?580:Math.min(640,window.innerHeight*.7);
-      setZoom(Math.min(1,(mapScroll.clientWidth-28)/mapWidth,(viewportHeight-28)/mapHeight));
-      mapScroll.scrollLeft=0;mapScroll.scrollTop=0;
-    }),el('span','mx-zoom-hint','Ctrl / ⌘ + колесо'));
+    const fitMap=(readable=false)=>{
+      if(!mapScroll.clientWidth||!mapScroll.clientHeight)return;
+      const fitted=Math.min(1,(mapScroll.clientWidth-32)/mapWidth,(mapScroll.clientHeight-32)/mapHeight);
+      setZoom(readable?Math.max(.65,fitted):fitted);
+      if(readable)scrollToSelected();else{mapScroll.scrollLeft=0;mapScroll.scrollTop=0;}
+    };
+    zoomBar.append(zoomOut,zoomValue,zoomIn,btn('Показать всё','mx-zoom-fit',()=>{mapScroll.dataset.autoFit='false';fitMap();}),el('span','mx-zoom-hint','Ctrl / ⌘ + колесо'));
     function setZoom(value,anchor){
       const next=Math.max(.05,Math.min(2,value));
       const x=anchor?.x??mapScroll.clientWidth/2,y=anchor?.y??mapScroll.clientHeight/2;
@@ -112,14 +115,29 @@ const Matrix28 = (() => {
     }
     mapScroll.addEventListener('wheel',event=>{
       if(!event.ctrlKey&&!event.metaKey)return;
-      event.preventDefault();const rect=mapScroll.getBoundingClientRect();
+      event.preventDefault();mapScroll.dataset.autoFit='false';const rect=mapScroll.getBoundingClientRect();
       setZoom(zoom*Math.exp(-event.deltaY*.003),{x:event.clientX-rect.left,y:event.clientY-rect.top});
     },{passive:false});
     mapScroll.addEventListener('keydown',event=>{
       if(event.target!==mapScroll)return;
       if(!['+','=','-','0'].includes(event.key))return;
-      event.preventDefault();setZoom(event.key==='0'?1:zoom*(event.key==='-'?1/1.2:1.2));
+      event.preventDefault();mapScroll.dataset.autoFit='false';setZoom(event.key==='0'?1:zoom*(event.key==='-'?1/1.2:1.2));
     });
+    let pan=null;
+    mapScroll.addEventListener('pointerdown',event=>{
+      if(event.button!==0||event.target.closest('button,.mx-node'))return;
+      pan={x:event.clientX,y:event.clientY,left:mapScroll.scrollLeft,top:mapScroll.scrollTop};
+      mapScroll.setPointerCapture(event.pointerId);mapScroll.classList.add('is-panning');
+    });
+    mapScroll.addEventListener('pointermove',event=>{
+      if(!pan)return;
+      mapScroll.scrollLeft=pan.left+pan.x-event.clientX;
+      mapScroll.scrollTop=pan.top+pan.y-event.clientY;
+    });
+    const stopPan=()=>{pan=null;mapScroll.classList.remove('is-panning');};
+    mapScroll.addEventListener('pointerup',stopPan);
+    mapScroll.addEventListener('pointercancel',stopPan);
+    mapScroll.addEventListener('lostpointercapture',stopPan);
     map.append(lane,lines);surface.append(map);mapScroll.append(surface);
     const edgeLegend=el('div','mx-edge-legend');edgeLegend.setAttribute('aria-label','Итоги переходов');
     [['success','Успешно'],['failure','Неуспешно'],['inconclusive','Неопределённо'],['pending','Без итога']].forEach(([kind,label])=>{const item=el('span','mx-edge-legend-item');item.append(el('i','mx-edge-swatch '+kind),el('span','',label));edgeLegend.append(item);});
@@ -140,6 +158,7 @@ const Matrix28 = (() => {
     attRow.append(attLine);timeRows.append(calRow,attRow);
     timeBody.append(timeRows);
     timeline.append(timeBody);
+    const measures=el('div','mx-measures');measures.append(ugtScale,timeline);
     const extra=el('section','mx-extra');extra.hidden=true;const extraBody=el('div','mx-extra-body');extra.append(extraBody);
     const views=[['Материалы',()=>WorkflowUI.materials(extraBody,data)],['Команда',()=>WorkflowUI.team(extraBody,data)],['История',()=>WorkflowUI.history(extraBody,data)],['О проекте',()=>{
       extraBody.append(el('h2','',project.name),el('p','mx-about-summary',project.summary||''));
@@ -150,14 +169,16 @@ const Matrix28 = (() => {
     if(data.can_ask||data.can_review)views.push(['Вопросы',()=>WorkflowUI.questions(extraBody,data)]);
     sectionTabs.setAttribute('role','tablist');
     const markTabs=name=>[...sectionTabs.children].forEach(x=>{x.classList.toggle('active',x.textContent===name);x.setAttribute('aria-selected',String(x.textContent===name));});
-    sectionTabs.append(btn('Дерево решений','active',()=>{extra.hidden=true;primary.hidden=false;timeline.hidden=false;ugtScale.hidden=false;utility.hidden=false;markTabs('Дерево решений');scrollToSelected();}));
+    sectionTabs.append(btn('Дерево решений','active',()=>{extra.hidden=true;primary.hidden=false;measures.hidden=false;utility.hidden=false;markTabs('Дерево решений');scrollToSelected();}));
     views.forEach(([name,fn])=>{
-      const show=()=>{extra.hidden=false;primary.hidden=true;timeline.hidden=true;ugtScale.hidden=true;utility.hidden=true;markTabs(name);extraBody.replaceChildren();fn();};
+      const show=()=>{extra.hidden=false;primary.hidden=true;measures.hidden=true;utility.hidden=true;markTabs(name);extraBody.replaceChildren();fn();};
       sectionTabs.append(btn(name,'',show));
     });
     [...sectionTabs.children].forEach(x=>x.setAttribute('role','tab'));markTabs('Дерево решений');
     const workflow=el('div','mx-workflow');WorkflowUI.controls(workflow,data);
-    host.append(top,hero,sectionTabs,utility,primary,ugtScale,timeline,extra,workflow);
+    host.append(top,hero,sectionTabs,workflow,utility,primary,measures,extra);
+    const mapResize=new ResizeObserver(()=>{if(!host.isConnected)return;if(mapScroll.dataset.autoFit==='true')fitMap(true);});
+    mapScroll.dataset.autoFit='true';mapResize.observe(mapScroll);host._mapResize=mapResize;
     function stageDate(s){return dt(s.due_at)||dt(s.completed_at);}
     function coordinates(){
       return treeLayout.points;
@@ -235,27 +256,18 @@ const Matrix28 = (() => {
       [['Ответственная',selected.owner_name||'Не назначена'],['Контрольная дата',shortDate(stageDate(selected))]].forEach(([name,value])=>{meta.append(el('dt','',name),el('dd','',value));});
       inspector.append(meta);
       const criteria=(selected.criteria_text||'').split('\n').map(x=>x.trim()).filter(Boolean);
-      const criteriaHead=el('div','mx-detail-head');criteriaHead.append(el('h3','','Критерии готовности'),el('span','',criteria.length?criteria.filter(x=>x.startsWith('[x]')).length+'/'+criteria.length:'—'));inspector.append(criteriaHead);
-      if(criteria.length)criteria.forEach(item=>{const done=item.startsWith('[x]'),row=el('div','mx-criterion');row.append(el('span',done?'done':'',done?'✓':''),el('span','',item.replace(/^\[[x ]\]\s*/i,'')));inspector.append(row);});
-      else inspector.append(el('p','mx-criteria-empty','Критерии пока не указаны.'));
-      appendStageChoices(inspector,selected);
+      const summary=el('div','mx-inspector-summary');
+      [['Критерии',`${criteria.filter(x=>x.startsWith('[x]')).length} / ${criteria.length}`],['Материалы',String(docs.length)]].forEach(([name,value])=>{const item=el('div');item.append(el('span','',name),el('strong','',value));summary.append(item);});
+      inspector.append(summary);
       const attention=selected.attention_note||(!stageDate(selected)&&selected.status==='in_progress'?'Контрольная дата пока не назначена.':'');
-      if(attention){const box=el('div','mx-attention-note');box.append(el('b','','• Требует внимания'),el('span','',attention));inspector.append(box);}
-      const materialsHead=el('div','mx-detail-head');materialsHead.append(el('h3','','Материалы'),el('span','',String(docs.length)));inspector.append(materialsHead);
-      if(docs.length)docs.forEach(m=>inspector.append(btn('↗ '+m.title,'mx-material',()=>WorkflowUI.run(()=>WorkflowUI.download(data,m)))));
-      else inspector.append(el('p','mx-criteria-empty','Материалов пока нет.'));
-      inspector.append(btn('Открыть событие','mx-open',()=>openEvent(selected)));
-      if(data.can_edit)inspector.append(btn('Редактировать этап','mx-edit-stage',()=>WorkflowUI.stage(data,selected)));
+      if(attention){const box=el('div','mx-attention-note');box.append(el('b','','• Требует внимания'));inspector.append(box);}
+      const actions=el('div','mx-inspector-actions');
+      actions.append(btn('Открыть событие','mx-open',()=>openEvent(selected)));
+      if(data.can_edit)actions.append(btn('Изменить этап','mx-edit-stage',()=>WorkflowUI.stage(data,selected)));
+      inspector.append(actions);
     }
     function openEvent(stage){
       if(stage)location.hash=`event/${project.public_id}/${stage.public_id}`;
-    }
-    function appendStageChoices(host,stage){
-      if(!stage.choices?.length)return;
-      host.append(el('h3','mx-choice-heading','Варианты результата'));
-      const list=el('div','mx-choice-list');
-      stage.choices.forEach((choice,index)=>{const row=el('label','mx-choice-row');const radio=el('input');radio.type='radio';radio.disabled=true;radio.checked=stage.selected_choice===index;row.append(radio,el('span','',choice));list.append(row);});
-      host.append(list);
     }
     function drag(event,kind){
       if(!lensBounds||event.button!==0)return;
