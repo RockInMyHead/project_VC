@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#101d16">
   <title>Бок о бок — администрирование</title>
-  <link rel="stylesheet" href="./admin.css?v=activity-1">
+  <link rel="stylesheet" href="./admin.css?v=logs-1">
   <style>[hidden]{display:none!important}</style>
-<link rel="stylesheet" href="./palette.css?v=olive33-1"><link rel="stylesheet" href="./palette-overrides.css?v=olive33-1"><link rel="stylesheet" href="./focus.css?v=olive33-1"><link rel="stylesheet" href="./workflow.css?v=olive33-1"><link rel="stylesheet" href="./typography.css?v=1"><link rel="stylesheet" href="./theme.css?v=2"><link rel="stylesheet" href="./mobile.css?v=drawer-1"><script src="./theme.js?v=2"></script></head>
+<link rel="stylesheet" href="./palette.css?v=olive33-1"><link rel="stylesheet" href="./palette-overrides.css?v=olive33-1"><link rel="stylesheet" href="./focus.css?v=olive33-1"><link rel="stylesheet" href="./workflow.css?v=logs-1"><link rel="stylesheet" href="./typography.css?v=1"><link rel="stylesheet" href="./theme.css?v=2"><link rel="stylesheet" href="./mobile.css?v=drawer-1"><script src="./theme.js?v=2"></script></head>
 <body>
   <div class="admin-loading" id="loading">Проверяем права доступа…</div>
   <div class="admin-app" id="adminApp" hidden>
@@ -19,6 +19,7 @@
         <button data-section="registrations">Заявки <b id="requestsBadge">0</b></button>
         <button data-section="projects">Проекты <b id="projectsBadge">0</b></button>
         <button data-section="audit">Аудит действий <b id="auditBadge">0</b></button>
+        <button data-section="logs">Логи приложения <b>●</b></button>
         <button data-section="system">Система <b class="healthy">OK</b></button>
         <button type="button" id="adminMessages">Сообщения <b>↗</b></button>
         <button type="button" id="adminNotifications">Уведомления <b>↗</b></button>
@@ -45,11 +46,13 @@
 
       <section class="admin-view" data-view="audit"><form class="audit-filters" id="auditFilters"><label>Действие<input name="action" type="search" placeholder="Код: login, publish, tree…"></label><label>Пользователь<input name="actor" type="search" placeholder="Имя участника"></label><label>Объект<select name="entity"><option value="">Все объекты</option><option value="project">Проект</option><option value="user">Пользователь</option><option value="session">Сессия</option><option value="message">Сообщение</option></select></label><label>С даты<input name="from" type="date"></label><label>По дату<input name="to" type="date"></label><button type="submit" class="admin-primary">Применить</button><button type="reset">Сбросить</button></form><p class="audit-status" id="auditStatus" role="status"></p><div class="audit-log" id="auditLog"></div><button type="button" class="audit-more" id="auditMore" hidden>Показать ещё</button></section>
 
+      <section class="admin-view" data-view="logs"><div class="admin-logs-head"><div><h2>Логи приложения</h2><p>Последние ошибки запросов и сообщения сервера. Доступны с момента последнего перезапуска.</p></div><div class="admin-logs-controls"><label>Уровень<select id="logsLevel"><option value="">Все</option><option value="error">Ошибки сервера</option><option value="warning">Ошибки запросов</option><option value="info">Информация</option></select></label><button type="button" id="logsRefresh">Обновить</button></div></div><p id="logsStatus" class="admin-logs-status" role="status"></p><div id="logsList" class="admin-logs-list"></div></section>
+
       <section class="admin-view" data-view="system"><div class="system-grid"><article><span>API</span><strong id="apiStatus">Проверяется</strong></article><article><span>База данных</span><strong id="dbStatus">Проверяется</strong></article><article><span>Хранилище</span><strong>Не подключено</strong><small>Настройте объектное хранилище</small></article><article><span>Резервное копирование</span><strong>Не настроено</strong><small>Укажите расписание и хранилище</small></article></div><div class="admin-activity-heading"><h2>Активность за 7 дней</h2><span>Данные по UTC</span></div><p id="systemActivityStatus" class="admin-activity-status" role="status"></p><div id="systemActivity" class="admin-activity-grid"></div></section>
     </main>
   </div>
 
   <div class="admin-toast" id="adminToast"></div>
-  <script src="./workflow-ui.js?v=compare2"></script><script src="./admin.js?v=messages-1"></script><script src="./mobile-nav.js?v=1"></script>
+  <script src="./workflow-ui.js?v=compare2"></script><script src="./admin.js?v=logs-1"></script><script src="./mobile-nav.js?v=1"></script>
 </body>
 </html>

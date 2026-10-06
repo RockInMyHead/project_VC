@@ -250,6 +250,33 @@ class WorkflowTests(unittest.TestCase):
         w.admin_command(self.db,self.users['super_admin'],'user-update',{'user_id':self.users['investor']['public_id'],'status':'blocked'})
         self.db.execute("INSERT INTO auth_sessions(public_id,user_id,token_hash,expires_at) VALUES('session',?,?,'2099-01-01T00:00:00Z')",(self.users['investor']['id'],database.hash_token('test-token')))
         h=server.ApiHandler.__new__(server.ApiHandler);h.headers={'Authorization':'Bearer test-token'};self.assertIsNone(h._bearer_user(self.db))
+    def test_admin_assigns_active_fund_employee_and_audits_project(self):
+        admin=self.users['super_admin']
+        manager=self.users['other']
+        with database.transaction(self.db):
+            w.admin_command(self.db,admin,'assign',{'project_id':self.pid,'manager_id':manager['public_id']})
+        self.assertEqual(w.project_list(self.db,admin)['items'][0]['manager_public_id'],manager['public_id'])
+        record=self.db.execute("SELECT entity_type,entity_public_id FROM audit_log WHERE action='admin.assign' ORDER BY id DESC LIMIT 1").fetchone()
+        self.assertEqual(tuple(record),('project',self.pid))
+        self.db.execute("UPDATE users SET status='blocked' WHERE id=?",(manager['id'],))
+        with self.assertRaises(w.Problem):
+            with database.transaction(self.db):
+                w.admin_command(self.db,admin,'assign',{'project_id':self.pid,'manager_id':manager['public_id']})
+        with database.transaction(self.db):
+            w.admin_command(self.db,admin,'assign',{'project_id':self.pid,'manager_id':''})
+        self.assertIsNone(w.project_list(self.db,admin)['items'][0]['manager_public_id'])
+    def test_operational_logs_are_admin_only_and_hide_query_strings(self):
+        server.OPERATIONAL_LOGS.clear()
+        server.operational_log('warning','GET','/api/projects?token=secret',403,'Доступ закрыт')
+        self.assertEqual(server.recent_operational_logs()[0]['path'],'/api/projects')
+        self.assertNotIn('secret',str(server.recent_operational_logs()))
+        with patch.object(server,'connect',side_effect=lambda:database.connect(self.path)):
+            response=self.handler('/api/admin/logs?level=warning',{},'super_admin').do_GET()
+            denied=self.handler('/api/admin/logs',{},'founder').do_GET()
+        self.assertEqual(response[0],200)
+        self.assertEqual(len(response[1]['items']),1)
+        self.assertEqual(denied[0],403)
+        server.OPERATIONAL_LOGS.clear()
     def handler(self,path,data,role='founder'):
         h=server.ApiHandler.__new__(server.ApiHandler);h.path=path;h.headers={};h.client_address=('127.0.0.1',0);h._body=lambda:dict(data);h._bearer_user=lambda db:self.users[role];h._json=lambda status,payload:(status,payload);return h
     def test_idempotency_and_conflict(self):

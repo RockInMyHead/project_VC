@@ -339,8 +339,10 @@ def admin_command(db,user,action,data):
             result['user_id']=uid
         db.execute('UPDATE registration_requests SET status=?,reviewed_by=?,reviewed_at=? WHERE id=?',('approved' if approve else 'rejected',user['id'],utc_now(),r['id']))
     elif action=='assign':
-        p=db.execute('SELECT * FROM projects WHERE public_id=?',(data.get('project_id'),)).fetchone();manager=db.execute("SELECT id FROM users WHERE public_id=? AND role_id=3 AND status='active'",(data.get('manager_id'),)).fetchone();require(p and (manager or not data.get('manager_id')),'Выберите проект и активного сотрудника фонда.',422)
+        p=db.execute('SELECT * FROM projects WHERE public_id=?',(data.get('project_id'),)).fetchone();manager=db.execute("SELECT u.id FROM users u JOIN roles r ON r.id=u.role_id WHERE u.public_id=? AND r.code='fund_staff' AND u.status='active'",(data.get('manager_id'),)).fetchone();require(p and (manager or not data.get('manager_id')),'Выберите проект и активного сотрудника фонда.',422)
         db.execute('UPDATE projects SET fund_manager_id=? WHERE id=?',(manager['id'] if manager else None,p['id']));audit(db,user,'project.assigned',p['public_id'],{'manager':data.get('manager_id')});result={'ok':True}
     else: raise Problem(404,'Действие не найдено.')
-    db.execute("INSERT INTO audit_log(public_id,actor_id,action,entity_type,entity_public_id) VALUES(?,?,?,'user',?)",(public_id('aud'),user['id'],'admin.'+action,data.get('user_id') or data.get('request_id') or result.get('user_id')))
+    entity_type='project' if action=='assign' else 'user'
+    entity_id=data.get('project_id') if action=='assign' else data.get('user_id') or data.get('request_id') or result.get('user_id')
+    db.execute("INSERT INTO audit_log(public_id,actor_id,action,entity_type,entity_public_id) VALUES(?,?,?,?,?)",(public_id('aud'),user['id'],'admin.'+action,entity_type,entity_id))
     return result

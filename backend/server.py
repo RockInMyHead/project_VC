@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections import deque
 from contextlib import closing
 import base64
 import hashlib
@@ -12,6 +13,7 @@ import re
 import secrets
 import sqlite3
 import sys
+from threading import Lock
 from datetime import datetime, timedelta, timezone
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -23,6 +25,23 @@ from db import DB_PATH, connect, hash_password, hash_token, init_database, publi
 ROOT = Path(__file__).resolve().parents[1]
 UPLOAD_ROOT = DB_PATH.parent / 'uploads'
 PROXY_PEER_RANGES=tuple(ipaddress.ip_network(net) for net in ('127.0.0.0/8','10.0.0.0/8','172.16.0.0/12','192.168.0.0/16','::1/128','fc00::/7'))
+OPERATIONAL_LOGS = deque(maxlen=200)
+OPERATIONAL_LOGS_LOCK = Lock()
+
+
+def operational_log(level: str, method: str, path: str, status: int, message: str) -> None:
+    # Keep only request metadata; never store headers, request bodies or credentials.
+    entry = {'created_at': utc_now(), 'level': level, 'method': method,
+             'path': urlparse(path).path[:180], 'status': status, 'message': str(message)[:300]}
+    with OPERATIONAL_LOGS_LOCK:
+        OPERATIONAL_LOGS.appendleft(entry)
+
+
+def recent_operational_logs(level: str = '') -> list[dict]:
+    if level not in ('', 'info', 'warning', 'error'):
+        raise ValueError('Некорректный уровень логов.')
+    with OPERATIONAL_LOGS_LOCK:
+        return [entry.copy() for entry in OPERATIONAL_LOGS if not level or entry['level'] == level]
 
 
 def slugify(value: str) -> str:
@@ -278,6 +297,9 @@ class ApiHandler(SimpleHTTPRequestHandler):
                 "validation_failed": "Проверьте заполненные поля и попробуйте снова.",
             }
             payload["message"] = messages.get(payload["error"], "Не удалось выполнить действие. Попробуйте ещё раз.")
+        if status >= 400:
+            operational_log('error' if status >= 500 else 'warning', getattr(self, 'command', 'API'),
+                            getattr(self, 'path', '/api'), status, payload.get('message', 'Ошибка запроса') if isinstance(payload, dict) else 'Ошибка запроса')
         body = json.dumps(payload, ensure_ascii=False).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -537,6 +559,12 @@ class ApiHandler(SimpleHTTPRequestHandler):
                         return self._json(200,audit_entries(db,urlparse(self.path).query))
                     except ValueError as error:
                         return self._json(422,{"error":"invalid_filter","message":str(error)})
+                if path == "/api/admin/logs":
+                    level = parse_qs(urlparse(self.path).query).get('level', [''])[0]
+                    try:
+                        return self._json(200, {'items': recent_operational_logs(level), 'retention': 'memory'})
+                    except ValueError as error:
+                        return self._json(422, {'error': 'invalid_filter', 'message': str(error)})
                 return self._json(404,{"error":"not_found"})
         # Only public application assets are served. Never expose source, DB or credentials.
         from urllib.parse import unquote
@@ -752,6 +780,7 @@ def run(port: int = 5188):
     init_database()
     host = os.environ.get("BOKOBOK_HOST", "127.0.0.1")
     server = Server((host,port),ApiHandler)
+    operational_log('info', 'SYSTEM', '/api/health', 200, 'Приложение запущено.')
     print(f"Бок о бок: http://{host}:{port}")
     server.serve_forever()
 
