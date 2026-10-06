@@ -403,6 +403,9 @@ class ApiHandler(SimpleHTTPRequestHandler):
             with closing(connect()) as db:
                 ok = db.execute("PRAGMA quick_check").fetchone()[0]
             return self._json(200, {"status": "ok", "database": ok})
+        if path == "/api/public/projects":
+            with closing(connect()) as db:
+                return self._json(200, workflow.public_project_previews(db))
         if path == '/api/profile/avatar':
             with closing(connect()) as db:
                 user=self._bearer_user(db)
@@ -569,14 +572,14 @@ class ApiHandler(SimpleHTTPRequestHandler):
         # Only public application assets are served. Never expose source, DB or credentials.
         from urllib.parse import unquote
         clean = unquote(path)
-        allowed = {'/','/index.html','/admin.html','/favicon.ico'}
+        allowed = {'/','/index.html','/admin.html','/preview.html','/favicon.ico'}
         if clean not in allowed and not (clean.count('/')==1 and clean.endswith(('.js','.css')) and (ROOT/clean[1:]).is_file()):
             return self._json(404, {'error':'not_found'})
         return super().do_GET()
 
     def do_HEAD(self):
         path=urlparse(self.path).path
-        if path not in ('/','/index.html','/admin.html','/favicon.ico') and not (path.count('/')==1 and path.endswith(('.js','.css'))):
+        if path not in ('/','/index.html','/admin.html','/preview.html','/favicon.ico') and not (path.count('/')==1 and path.endswith(('.js','.css'))):
             self.send_error(404);return
         super().do_HEAD()
 

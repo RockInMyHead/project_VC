@@ -233,6 +233,20 @@ class WorkflowTests(unittest.TestCase):
         self.assertTrue(self.db.execute("SELECT 1 FROM notifications WHERE user_id=? AND type='answer'",(self.users['investor']['id'],)).fetchone())
         self.cmd('founder','draft');self.cmd('founder','submit',{'summary':'Update'});self.cmd('fund_staff','publish')
         self.assertTrue(self.db.execute("SELECT 1 FROM notifications WHERE user_id=? AND type='publication'",(self.users['investor']['id'],)).fetchone())
+    def test_guest_preview_only_exposes_published_project_summary(self):
+        self.assertEqual(w.public_project_previews(self.db)['items'],[])
+        self.publish()
+        preview=w.public_project_previews(self.db)['items']
+        self.assertEqual(len(preview),1)
+        self.assertEqual(preview[0]['public_id'],self.pid)
+        self.assertEqual(len(preview[0]['stages']),2)
+        self.assertNotIn('founder_id',preview[0])
+        self.assertNotIn('materials',preview[0])
+        self.assertNotIn('owner_name',preview[0]['stages'][0])
+        with patch.object(server,'connect',side_effect=lambda:database.connect(self.path)):
+            response=self.handler('/api/public/projects',{},'investor').do_GET()
+        self.assertEqual(response[0],200)
+        self.assertEqual(len(response[1]['items']),1)
     def test_admin_approval_and_blocking(self):
         rid=server.create_registration_request(self.db,{'full_name':'New founder','email':'new@example.test','organization':'Lab','password':'my-strong-password'})
         with database.transaction(self.db): approval=w.admin_command(self.db,self.users['super_admin'],'registration',{'request_id':rid,'decision':'approve'})

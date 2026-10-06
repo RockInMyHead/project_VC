@@ -97,6 +97,26 @@ def project_list(db,user):
         result.append(item)
     return {'items':result}
 
+def public_project_previews(db):
+    """Only published project cards and stage labels for the guest preview."""
+    rows=db.execute("""SELECT p.public_id,p.code,p.name,p.summary,p.field,p.ugt_level,p.status,
+        v.id version_id,v.card_json FROM projects p JOIN tree_versions v ON v.id=(
+        SELECT id FROM tree_versions WHERE project_id=p.id AND state='published'
+        ORDER BY version_number DESC LIMIT 1)
+        WHERE p.status IN ('active','paused','completed')
+        ORDER BY p.last_published_at DESC LIMIT 30""").fetchall()
+    items=[]
+    for row in rows:
+        card=json.loads(row['card_json'] or '{}')
+        project={key:card.get(key,row[key]) for key in ('code','name','summary','field','ugt_level')}
+        project['public_id']=row['public_id']
+        project['status']=row['status']
+        project['stages']=[dict(stage) for stage in db.execute(
+            "SELECT position,title,status,progress FROM stages WHERE tree_version_id=? ORDER BY position,id LIMIT 40",
+            (row['version_id'],))]
+        items.append(project)
+    return {'items':items}
+
 def project_comparison_list(db,user):
     require(user,'Войдите в систему.',401)
     items=project_list(db,user)['items']

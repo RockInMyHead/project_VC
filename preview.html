@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Посмотреть платформу — Бок о бок</title>
+  <link rel="stylesheet" href="./palette.css">
+  <link rel="stylesheet" href="./theme.css">
+  <link rel="stylesheet" href="./preview.css?v=1">
+  <script src="./theme.js"></script>
+  <script src="./preview.js?v=1" defer></script>
+</head>
+<body>
+  <div class="preview-shell">
+    <aside class="preview-sidebar">
+      <a class="preview-brand" href="./index.html#home">Бок о бок</a>
+      <nav aria-label="Разделы гостевого просмотра">
+        <button type="button" class="is-active" data-preview-tab="projects">Проекты</button>
+        <button type="button" data-preview-tab="chat">Сообщения</button>
+        <button type="button" data-preview-tab="profile">Личный кабинет</button>
+      </nav>
+      <div class="preview-sidebar-bottom"><span>Гостевой просмотр</span><a href="./index.html#auth">Войти <span aria-hidden="true">↗</span></a></div>
+    </aside>
+    <main class="preview-main">
+      <header class="preview-topbar"><a class="preview-back" href="./index.html#home">← На главную</a><div><span class="preview-mode">Гостевой режим</span><button type="button" data-theme-toggle class="preview-theme"></button></div></header>
+      <div class="preview-mobile-nav" aria-label="Разделы гостевого просмотра"><button type="button" data-preview-tab="projects" class="is-active">Проекты</button><button type="button" data-preview-tab="chat">Сообщения</button><button type="button" data-preview-tab="profile">Кабинет</button></div>
+      <section class="preview-view is-active" data-preview-view="projects">
+        <div class="preview-heading"><div><p class="preview-eyebrow">Открытая часть платформы</p><h1>Проекты</h1><p>Опубликованные исследования и их прогресс. Полные материалы доступны после входа.</p></div><a class="preview-cta" href="./index.html#auth">Войти для просмотра ↗</a></div>
+        <div id="previewProjects" class="preview-projects" role="status"><p class="preview-empty">Загружаем проекты…</p></div>
+        <section class="preview-detail" id="previewDetail" hidden aria-label="Сведения о проекте"></section>
+      </section>
+      <section class="preview-view" data-preview-view="chat">
+        <div class="preview-heading"><div><p class="preview-eyebrow">Пример интерфейса</p><h1>Сообщения</h1><p>Так выглядит переписка внутри платформы. Личные диалоги доступны только после входа.</p></div></div>
+        <div class="preview-messenger"><div class="preview-chat-list"><strong>Диалоги</strong><div class="preview-chat-item is-active"><span class="preview-avatar">П</span><div><b>Пример диалога</b><small>Как идёт проверка этапа?</small></div></div></div><div class="preview-chat-thread"><div class="preview-chat-head"><span class="preview-avatar">П</span><strong>Пример диалога</strong><small>Демонстрация</small></div><div class="preview-chat-history"><p class="preview-bubble">Здравствуйте! Когда появятся результаты проверки?</p><p class="preview-bubble is-own">После завершения этапа мы добавим результат и подтверждающие материалы в дерево проекта.</p></div><div class="preview-chat-compose"><span>Войдите, чтобы написать участнику проекта</span><a href="./index.html#auth">Войти ↗</a></div></div></div>
+      </section>
+      <section class="preview-view" data-preview-view="profile">
+        <div class="preview-heading"><div><p class="preview-eyebrow">Пример интерфейса</p><h1>Личный кабинет</h1><p>Здесь участники управляют своим профилем и доступом к платформе.</p></div></div>
+        <div class="preview-profile"><div class="preview-profile-head"><span class="preview-profile-avatar">Г</span><div><h2>Гостевой профиль</h2><p>Пример кабинета · данные не сохраняются</p></div></div><div class="preview-profile-grid"><div><small>Имя</small><strong>Ваше имя</strong></div><div><small>Организация</small><strong>Ваша команда</strong></div><div><small>Роль</small><strong>Назначается администратором</strong></div><div><small>Доступ</small><strong>После входа</strong></div></div><div class="preview-profile-footer"><span>Создайте учётную запись, чтобы заполнить профиль и начать работу.</span><a href="./index.html#auth">Войти или зарегистрироваться ↗</a></div></div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
