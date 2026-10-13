@@ -125,14 +125,21 @@ const WorkflowUI = (() => {
       if(m.mime_type.startsWith('video/')||m.mime_type.startsWith('image/')){
         let preview=null,url=null;
         row.append(btn('Посмотреть',()=>run(async()=>{
-          if(preview){preview.remove();preview=null;URL.revokeObjectURL(url);url=null;return;}
+          if(preview){preview.remove();row.querySelector('.workflow-media-error')?.remove();preview=null;URL.revokeObjectURL(url);url=null;return;}
           const response=await fetch(`/api/projects/${encodeURIComponent(data.project.public_id)}/materials/${encodeURIComponent(m.public_id)}/download`,{headers:{Authorization:`Bearer ${localStorage.getItem('bokToken')}`}});
           if(!response.ok)throw new Error('Не удалось открыть материал.');
           url=URL.createObjectURL(await response.blob());
           preview=el(m.mime_type.startsWith('video/')?'video':'img',undefined,'workflow-media-preview');
-          preview.src=url;
-          if(preview.tagName==='VIDEO'){preview.controls=true;preview.playsInline=true;preview.preload='metadata';}
+          if(preview.tagName==='VIDEO'){
+            preview.controls=true;preview.playsInline=true;preview.preload='metadata';
+            preview.onerror=()=>{
+              if(row.querySelector('.workflow-media-error'))return;
+              const message=el('p','Не удалось воспроизвести видео в этом браузере. Скачайте файл, чтобы посмотреть его.','workflow-media-error');
+              preview.after(message);
+            };
+          }
           else preview.alt=m.title;
+          preview.src=url;
           row.append(preview);
         })));
       }

@@ -15,6 +15,15 @@ from db import hash_password, public_id
 
 
 class ProjectCreationTests(unittest.TestCase):
+    def test_security_policy_allows_authenticated_blob_video_preview(self):
+        handler = server_module.ApiHandler.__new__(server_module.ApiHandler)
+        handler.path = '/index.html'
+        headers = {}
+        handler.send_header = lambda name, value: headers.update({name: value})
+        with patch.object(server_module.SimpleHTTPRequestHandler, 'end_headers'):
+            handler.end_headers()
+        self.assertIn("media-src 'self' blob:", headers['Content-Security-Policy'])
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.db_path = Path(self.temp.name) / "test.db"
