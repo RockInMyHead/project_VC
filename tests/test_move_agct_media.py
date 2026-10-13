@@ -21,7 +21,9 @@ class MoveAgctMediaTests(unittest.TestCase):
             uploads = root / 'uploads'
             assets.mkdir()
             uploads.mkdir()
-            (assets / 'agct-portrait.jpg').write_bytes(b'portrait')
+            for filename in ('agct-portrait.jpg', 'agct-portrait-2.jpg',
+                             'agct-portrait-3.jpg', 'agct-portrait-4.jpg'):
+                (assets / filename).write_bytes(b'portrait')
             (uploads / 'lab.mp4').write_bytes(b'video')
             with connect(root / 'test.db') as db:
                 user_id = user_create(db, {'role': 'founder', 'full_name': 'Founder',
@@ -29,18 +31,19 @@ class MoveAgctMediaTests(unittest.TestCase):
                     'password': 'a-strong-test-password'})
                 founder = db.execute('SELECT u.*,r.code role_code FROM users u JOIN roles r ON r.id=u.role_id WHERE u.public_id=?', (user_id,)).fetchone()
                 ids = {}
-                for code, title in [('GLUTEN-FREE-YEAST', 'Создание коллекции штаммов'),
-                                    ('AGCT-HIV', 'Производство и документы')]:
+                for code, titles in [('GLUTEN-FREE-YEAST', ['Создание коллекции штаммов']),
+                                     ('AGCT-HIV', ['Начало НИР', 'Производство и документы'])]:
                     created = create_founder_project(db, founder, {'code': code,
                         'name': code, 'summary': 'Summary', 'description': 'Description', 'field': 'Biotech',
-                        'stages': [{'id': 1, 'title': title}]})
+                        'stages': [{'id': index, 'title': title} for index,title in enumerate(titles,1)]})
                     db.execute("UPDATE tree_versions SET state='published' WHERE public_id=?",
                                (created['tree_version'],))
-                    ids[code] = db.execute('SELECT id FROM stages WHERE public_id=?',
-                        (created['stage_ids']['1'],)).fetchone()[0]
+                    for index,title in enumerate(titles,1):
+                        ids[title] = db.execute('SELECT id FROM stages WHERE public_id=?',
+                            (created['stage_ids'][str(index)],)).fetchone()[0]
                 db.execute('''INSERT INTO evidence(public_id,stage_id,title,storage_key,mime_type,
                     byte_size,checksum_sha256,uploaded_by) VALUES(?,?,?,?,?,?,?,?)''',
-                    (public_id('mat'), ids['GLUTEN-FREE-YEAST'],
+                    (public_id('mat'), ids['Создание коллекции штаммов'],
                      'Лабораторная работа — иллюстративное видео (крупный план)',
                      'file:lab.mp4', 'video/mp4', 5, hashlib.sha256(b'video').hexdigest(), founder['id']))
                 with patch('move_agct_media.ASSETS', assets), patch('move_agct_media.UPLOADS', uploads), \
@@ -50,7 +53,7 @@ class MoveAgctMediaTests(unittest.TestCase):
                     self.assertFalse(move_agct_media(db, True)['applied'])
                 rows = db.execute('SELECT stage_id,mime_type FROM evidence ORDER BY id').fetchall()
                 self.assertEqual([(r['stage_id'], r['mime_type']) for r in rows],
-                    [(ids['AGCT-HIV'], 'video/mp4'), (ids['AGCT-HIV'], 'image/jpeg')])
+                    [(ids['Начало НИР'], 'video/mp4')] + [(ids['Начало НИР'], 'image/jpeg')] * 4)
 
 
 if __name__ == '__main__':

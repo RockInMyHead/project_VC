@@ -1,4 +1,4 @@
-"""Move the seeded lab video to AGCT-HIV and attach its supplied portrait.
+"""Move the seeded lab video and all supplied portraits to early AGCT-HIV stage.
 
 Preview: python backend/move_agct_media.py
 Apply after backup: python backend/move_agct_media.py --apply
@@ -11,10 +11,16 @@ import json
 from db import connect, transaction
 from seed_roadmaps import ASSETS, UPLOADS, add_material
 
-TARGET_STAGE = 'Производство и документы'
+TARGET_STAGE = 'Начало НИР'
+PREVIOUS_STAGE = 'Производство и документы'
 SOURCE_STAGE = 'Создание коллекции штаммов'
 VIDEO_TITLE = 'Лабораторная работа — иллюстративное видео (крупный план)'
-PHOTO_TITLE = 'Портрет участника проекта'
+PHOTOS = (
+    ('agct-portrait.jpg', 'Портрет участника проекта'),
+    ('agct-portrait-2.jpg', 'Фото участника проекта 2'),
+    ('agct-portrait-3.jpg', 'Фото участника проекта 3'),
+    ('agct-portrait-4.jpg', 'Фото участника проекта 4'),
+)
 
 
 def stage(db, code: str, title: str):
@@ -30,33 +36,43 @@ def stage(db, code: str, title: str):
 
 def move_agct_media(db, apply: bool = False) -> dict:
     source = stage(db, 'GLUTEN-FREE-YEAST', SOURCE_STAGE)
+    previous = stage(db, 'AGCT-HIV', PREVIOUS_STAGE)
     target = stage(db, 'AGCT-HIV', TARGET_STAGE)
-    video = db.execute('''SELECT * FROM evidence WHERE stage_id=? AND title=? AND mime_type='video/mp4' ''',
-                       (source['id'], VIDEO_TITLE)).fetchall()
-    target_video = db.execute('''SELECT * FROM evidence WHERE stage_id=? AND title=? AND mime_type='video/mp4' ''',
-                              (target['id'], VIDEO_TITLE)).fetchall()
-    if len(video) + len(target_video) != 1:
+    stages = (source['id'], previous['id'], target['id'])
+    video = db.execute('''SELECT * FROM evidence WHERE stage_id IN (?,?,?) AND title=? AND mime_type='video/mp4' ''',
+                       (*stages, VIDEO_TITLE)).fetchall()
+    if len(video) != 1:
         raise ValueError('Видео отсутствует или найдено несколько копий. Изменения не внесены.')
-    photo = db.execute('SELECT id FROM evidence WHERE stage_id=? AND title=? AND mime_type=?',
-                       (target['id'], PHOTO_TITLE, 'image/jpeg')).fetchall()
-    if len(photo) > 1:
-        raise ValueError('Найдено несколько фотографий в целевом этапе.')
-    asset = ASSETS / 'agct-portrait.jpg'
-    if not photo and not asset.is_file():
-        raise ValueError('Фотография отсутствует в seed_assets.')
-    video_row = video[0] if video else target_video[0]
-    key = video_row['storage_key']
+    photos = []
+    for filename, title in PHOTOS:
+        rows = db.execute('''SELECT * FROM evidence WHERE stage_id IN (?,?) AND title=? AND mime_type='image/jpeg' ''',
+                          (previous['id'], target['id'], title)).fetchall()
+        if len(rows) > 1:
+            raise ValueError(f'Найдено несколько копий фото «{title}». Изменения не внесены.')
+        if not rows and not (ASSETS / filename).is_file():
+            raise ValueError(f'Фотография {filename} отсутствует в seed_assets.')
+        if rows:
+            key = rows[0]['storage_key']
+            if not key.startswith('file:') or not (UPLOADS / key[5:]).is_file():
+                raise ValueError(f'Файл фотографии «{title}» не найден в хранилище.')
+        photos.append(rows[0] if rows else None)
+    key = video[0]['storage_key']
     if not key.startswith('file:') or not (UPLOADS / key[5:]).is_file():
         raise ValueError('Файл видео не найден в хранилище. Изменения не внесены.')
     result = {'from': 'GLUTEN-FREE-YEAST / ' + SOURCE_STAGE,
               'to': 'AGCT-HIV / ' + TARGET_STAGE,
-              'video_moved': bool(video), 'photo_added': not bool(photo), 'applied': False}
-    if apply and (video or not photo):
+              'video_moved': video[0]['stage_id'] != target['id'],
+              'photos_moved': sum(row is not None and row['stage_id'] != target['id'] for row in photos),
+              'photos_added': sum(row is None for row in photos), 'applied': False}
+    if apply and (result['video_moved'] or result['photos_moved'] or result['photos_added']):
         with transaction(db):
-            if video:
+            if result['video_moved']:
                 db.execute('UPDATE evidence SET stage_id=? WHERE id=?', (target['id'], video[0]['id']))
-            if not photo:
-                add_material(db, target['id'], target['founder_id'], asset.name, PHOTO_TITLE, 'image/jpeg')
+            for (filename,title),row in zip(PHOTOS, photos):
+                if row and row['stage_id'] != target['id']:
+                    db.execute('UPDATE evidence SET stage_id=? WHERE id=?', (target['id'], row['id']))
+                elif row is None:
+                    add_material(db, target['id'], target['founder_id'], filename, title, 'image/jpeg')
         result['applied'] = True
     return result
 

@@ -145,8 +145,15 @@ def main():
                 src_id=db.execute('SELECT id FROM stages WHERE public_id=?',(created['stage_ids'][str(source_stage)],)).fetchone()['id']
                 add_material(db,src_id,founder['id'],spec['attachment'],'Авторская схема дорожной карты','image/jpeg')
                 if spec['code']=='AGCT-HIV':
-                    add_material(db,src_id,founder['id'],'lab-closeup.mp4','Лабораторная работа — иллюстративное видео (крупный план)','video/mp4')
-                    add_material(db,src_id,founder['id'],'agct-portrait.jpg','Портрет участника проекта','image/jpeg')
+                    early_stage=db.execute('''SELECT s.id FROM stages s JOIN tree_versions v ON v.id=s.tree_version_id
+                        WHERE v.id=(SELECT id FROM tree_versions WHERE public_id=?) AND s.title=?''',
+                        (created['tree_version'],'Начало НИР')).fetchone()['id']
+                    add_material(db,early_stage,founder['id'],'lab-closeup.mp4','Лабораторная работа — иллюстративное видео (крупный план)','video/mp4')
+                    for number,filename in enumerate(('agct-portrait.jpg','agct-portrait-2.jpg',
+                        'agct-portrait-3.jpg','agct-portrait-4.jpg'),1):
+                        add_material(db,early_stage,founder['id'],filename,
+                            'Портрет участника проекта' if number==1 else f'Фото участника проекта {number}',
+                            'image/jpeg')
                 db.execute("INSERT INTO audit_log(public_id,actor_id,action,entity_type,entity_public_id,metadata_json) VALUES(?,?,'project.published','project',?,?)",
                            (public_id('aud'),admin['id'],created['public_id'],json.dumps({'source':'user-supplied roadmap','stage_count':len(stages)},ensure_ascii=False)))
                 print(f"Создан {spec['code']}: {len(stages)} этапов, {created['public_id']}")
