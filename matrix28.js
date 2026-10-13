@@ -303,13 +303,10 @@ const Matrix28 = (() => {
       host._lensDragCleanup=cleanup;
     }
     function drawTimeline(){
-      if(!dated.length){
-        timeBody.replaceChildren(el('p','mx-timeline-empty','Добавьте контрольные даты событий, чтобы увидеть развитие проекта на шкале времени.'));
-        lensSummary.replaceChildren();lensEvents.replaceChildren();
-        return;
-      }
+      // Keep the lens usable even before the first event gets a date.
+      if(!dated.length && !timeBody.querySelector('.mx-timeline-empty'))timeBody.append(el('p','mx-timeline-empty','Назначьте дату этапу, чтобы увидеть его на шкале.'));
       calLine.replaceChildren();attLine.replaceChildren();
-      const first=dated[0]||center,last=dated.at(-1)||center;
+      const first=dated[0]||new Date(center.getFullYear()-1,center.getMonth(),1),last=dated.at(-1)||new Date(center.getFullYear()+1,center.getMonth(),1);
       const begin=new Date(first.getFullYear(),first.getMonth()-6,1),end=new Date(last.getFullYear(),last.getMonth()+7,1),totalMonths=Math.max(1,(end.getFullYear()-begin.getFullYear())*12+end.getMonth()-begin.getMonth());
       calendarSpanDays=(end-begin)/86400000;
       const pct=d=>Math.max(0,Math.min(100,(d-begin)/(end-begin)*100));

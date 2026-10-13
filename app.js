@@ -148,6 +148,7 @@ function renderTree() {
     $('#treeTitle').value = selected.title;
     $('#treeStatus').value = selected.status;
     $('#treeUgt').value = selected.ugt_level;
+    $('#treeDueAt').value = selected.due_at || '';
     $('#treeDescription').value = selected.description;
   }
   renderStageExtras(selected);
@@ -184,7 +185,6 @@ function renderStageExtras(stage){
 }
 
 function addTreeStage(parent = null) {
-  if (treeStages.length >= 12) { $('#projectMessage').textContent = 'В первом дереве можно добавить до 12 этапов.'; return; }
   const stage = { id: nextStageId++, parent, title: 'Новый этап', description: '', status: 'planned', ugt_level: Number($('#projectForm').elements.ugt_level.value) };
   treeStages.push(stage);
   selectedStageId = stage.id;
@@ -820,13 +820,14 @@ $('#treeDelete').onclick = () => {
   if (point) $('#treeCanvas').scrollTo({left:Math.max(0,point.x - 42),top:Math.max(0,point.y - 72),behavior:'instant'});
   saveProjectInput();
 };
-for (const [selector, property] of [['#treeTitle', 'title'], ['#treeStatus', 'status'], ['#treeUgt', 'ugt_level'], ['#treeDescription', 'description']]) {
+for (const [selector, property] of [['#treeTitle', 'title'], ['#treeStatus', 'status'], ['#treeUgt', 'ugt_level'], ['#treeDueAt', 'due_at'], ['#treeDescription', 'description']]) {
   $(selector).addEventListener(selector === '#treeTitle' || selector === '#treeDescription' ? 'input' : 'change', (event) => {
     const stage = treeStages.find((item) => item.id === selectedStageId);
     if (!stage) return;
     stage[property] = property === 'ugt_level' ? Number(event.target.value) : event.target.value;
     if (selector === '#treeTitle') $('#treeNodes .tree-node.selected strong').textContent = stage.title || 'Новый этап';
     else if (selector !== '#treeDescription') renderTree();
+    saveProjectInput();
   });
 }
 

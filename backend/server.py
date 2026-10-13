@@ -213,7 +213,7 @@ def create_founder_project(db: sqlite3.Connection, user: sqlite3.Row, data: dict
     raw_stages = data.get("stages") or []
     if isinstance(raw_stages, str):
         raw_stages = [line.strip() for line in raw_stages.splitlines() if line.strip()]
-    if not isinstance(raw_stages, list) or len(raw_stages) > 12:
+    if not isinstance(raw_stages, list):
         return None
     known_ids = set()
     for stage in raw_stages:
@@ -231,6 +231,12 @@ def create_founder_project(db: sqlite3.Connection, user: sqlite3.Row, data: dict
             return None
         if not 1 <= stage_ugt <= 9:
             return None
+        due_at=node.get('due_at') or None
+        if due_at is not None and (not isinstance(due_at,str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}',due_at)):
+            return None
+        if due_at:
+            try: datetime.strptime(due_at,'%Y-%m-%d')
+            except ValueError: return None
         choices=node.get('choices',[])
         if not isinstance(choices,list) or len(choices)>12 or any(not isinstance(choice,str) or not 1<=len(choice.strip())<=200 for choice in choices): return None
         selected_choice=node.get('selected_choice')
@@ -291,10 +297,10 @@ def create_founder_project(db: sqlite3.Connection, user: sqlite3.Row, data: dict
         stage_public_id = public_id("stg")
         db.execute(
             """
-            INSERT INTO stages(public_id,tree_version_id,parent_stage_id,position,branch_code,title,description,status,progress,ugt_level,choice_options_json,selected_choice)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO stages(public_id,tree_version_id,parent_stage_id,position,branch_code,title,description,status,progress,ugt_level,due_at,choice_options_json,selected_choice)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
-            (stage_public_id, tree_id, stage_ids.get(parent), position, "branch" if parent is not None else "main", title, str(node.get("description", "")).strip()[:2000], status, progress, stage_ugt,json.dumps([choice.strip() for choice in node.get('choices',[])],ensure_ascii=False),node.get('selected_choice')),
+            (stage_public_id, tree_id, stage_ids.get(parent), position, "branch" if parent is not None else "main", title, str(node.get("description", "")).strip()[:2000], status, progress, stage_ugt,node.get('due_at') or None,json.dumps([choice.strip() for choice in node.get('choices',[])],ensure_ascii=False),node.get('selected_choice')),
         )
         if isinstance(stage, dict):
             stage_ids[stage.get("id")] = db.execute("SELECT id FROM stages WHERE public_id=?", (stage_public_id,)).fetchone()[0]

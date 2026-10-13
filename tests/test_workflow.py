@@ -25,6 +25,20 @@ class WorkflowTests(unittest.TestCase):
         self.pid=self.p['public_id']
         self.db.execute('UPDATE projects SET fund_manager_id=? WHERE public_id=?',(self.users['fund_staff']['id'],self.pid))
     def tearDown(self): self.db.close();self.tmp.cleanup()
+    def test_project_creation_accepts_large_dated_tree(self):
+        stages=[{'id':i,'parent':i-1 if i>1 else None,'title':f'Этап {i}',
+                 'status':'planned','ugt_level':2,'due_at':f'2027-{(i-1)%12+1:02d}-15'}
+                for i in range(1,29)]
+        result=server.create_founder_project(self.db,self.users['founder'],{
+            'code':'LONG-TREE','name':'Long roadmap','summary':'Summary',
+            'description':'Description','field':'Biotech','ugt_level':2,'stages':stages})
+        self.assertEqual(result['stage_count'],28)
+        saved=self.db.execute('SELECT due_at FROM stages WHERE public_id=?',(result['stage_ids']['28'],)).fetchone()
+        self.assertEqual(saved['due_at'],'2027-04-15')
+        stages[0]['due_at']='2027-02-30'
+        self.assertIsNone(server.create_founder_project(self.db,self.users['founder'],{
+            'code':'INVALID-DATE','name':'Invalid roadmap','summary':'Summary',
+            'description':'Description','field':'Biotech','ugt_level':2,'stages':stages}))
     def cmd(self,role,action,data=None):
         with database.transaction(self.db): return w.project_command(self.db,self.users[role],self.pid,action,data or {})
     def detail(self,role):return w.project_detail(self.db,self.users[role],self.pid)

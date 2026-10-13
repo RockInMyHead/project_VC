@@ -10,6 +10,7 @@ WORKDIR /app
 COPY backend ./backend
 COPY db ./db
 COPY tests ./tests
+COPY seed_assets ./seed_assets
 COPY *.html *.js *.css ./
 
 RUN addgroup -S bokobok && adduser -S -G bokobok -u 10001 bokobok \

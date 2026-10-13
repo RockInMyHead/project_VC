@@ -119,7 +119,27 @@ const WorkflowUI = (() => {
       d.addEventListener('close',()=>controller.abort(),{once:true});
     }));
     if(!data.materials.length)host.append(el('p','Материалов пока нет.'));
-    data.materials.forEach(m=>{const row=el('div',undefined,'workflow-row');row.append(el('span',`${m.title} · ${Math.ceil(m.byte_size/1024)} КБ`),btn('Скачать',()=>run(()=>download(data,m))));if(data.can_edit)row.append(btn('Удалить',()=>dialog('Удалить материал?',[],(v,k)=>command(data,'material-delete',{material_id:m.public_id},k),'Удалить')));host.append(row);});
+    data.materials.forEach(m=>{
+      const row=el('div',undefined,'workflow-row');
+      row.append(el('span',`${m.title} · ${Math.ceil(m.byte_size/1024)} КБ`));
+      if(m.mime_type.startsWith('video/')||m.mime_type.startsWith('image/')){
+        let preview=null,url=null;
+        row.append(btn('Посмотреть',()=>run(async()=>{
+          if(preview){preview.remove();preview=null;URL.revokeObjectURL(url);url=null;return;}
+          const response=await fetch(`/api/projects/${encodeURIComponent(data.project.public_id)}/materials/${encodeURIComponent(m.public_id)}/download`,{headers:{Authorization:`Bearer ${localStorage.getItem('bokToken')}`}});
+          if(!response.ok)throw new Error('Не удалось открыть материал.');
+          url=URL.createObjectURL(await response.blob());
+          preview=el(m.mime_type.startsWith('video/')?'video':'img',undefined,'workflow-media-preview');
+          preview.src=url;
+          if(preview.tagName==='VIDEO'){preview.controls=true;preview.playsInline=true;preview.preload='metadata';}
+          else preview.alt=m.title;
+          row.append(preview);
+        })));
+      }
+      row.append(btn('Скачать',()=>run(()=>download(data,m))));
+      if(data.can_edit)row.append(btn('Удалить',()=>dialog('Удалить материал?',[],(v,k)=>command(data,'material-delete',{material_id:m.public_id},k),'Удалить')));
+      host.append(row);
+    });
   }
   function team(host,data){
     const labels={owner:'Основатель',manager:'Сотрудник фонда',researcher:'Исследователь · редактирование',viewer:'Участник · просмотр'};
