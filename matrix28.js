@@ -47,6 +47,7 @@ const Matrix28 = (() => {
     host._lensResize?.disconnect();
     host._mapResize?.disconnect();
     host._lensDragCleanup?.();
+    host._mapExpandCleanup?.();
     host.className='matrix28'+(compactDemo?' mx-demo-compact':'');host.replaceChildren();
     let selected=stages.find(s=>s.status==='in_progress')||stages[0]||null;
     let center=dt(selected?.due_at)||new Date(),months=3,query='',filter='all',calendarSpanDays=730,lensBounds=null;
@@ -102,7 +103,40 @@ const Matrix28 = (() => {
       setZoom(readable?Math.max(.65,fitted):fitted);
       if(readable)scrollToSelected();else{mapScroll.scrollLeft=0;mapScroll.scrollTop=0;}
     };
-    zoomBar.append(zoomOut,zoomValue,zoomIn,btn('Показать всё','mx-zoom-fit',()=>{mapScroll.dataset.autoFit='false';fitMap();}),el('span','mx-zoom-hint','Ctrl / ⌘ + колесо'));
+    const expandButton=btn('Увеличить','mx-map-expand',()=>toggleMapExpanded());
+    expandButton.setAttribute('aria-label','Увеличить карту проекта');
+    expandButton.setAttribute('aria-pressed','false');
+    let compactView=null;
+    const closeExpanded=()=>{
+      if(!host.classList.contains('mx-map-expanded'))return;
+      host.classList.remove('mx-map-expanded');
+      expandButton.textContent='Увеличить';
+      expandButton.setAttribute('aria-label','Увеличить карту проекта');
+      expandButton.setAttribute('aria-pressed','false');
+      requestAnimationFrame(()=>{
+        if(!host.isConnected||!compactView)return;
+        setZoom(compactView.zoom);
+        mapScroll.scrollLeft=compactView.left;
+        mapScroll.scrollTop=compactView.top;
+        mapScroll.dataset.autoFit=compactView.autoFit;
+        compactView=null;
+        expandButton.focus({preventScroll:true});
+      });
+    };
+    function toggleMapExpanded(){
+      if(host.classList.contains('mx-map-expanded')){closeExpanded();return;}
+      compactView={zoom,left:mapScroll.scrollLeft,top:mapScroll.scrollTop,autoFit:mapScroll.dataset.autoFit};
+      mapScroll.dataset.autoFit='false';
+      host.classList.add('mx-map-expanded');
+      expandButton.textContent='Свернуть';
+      expandButton.setAttribute('aria-label','Свернуть карту проекта');
+      expandButton.setAttribute('aria-pressed','true');
+      requestAnimationFrame(()=>{if(host.isConnected){fitMap(true);scrollToSelected();}});
+    }
+    const onExpandKeydown=event=>{if(event.key==='Escape'&&host.classList.contains('mx-map-expanded')){event.preventDefault();closeExpanded();}};
+    window.addEventListener('keydown',onExpandKeydown);
+    host._mapExpandCleanup=()=>window.removeEventListener('keydown',onExpandKeydown);
+    zoomBar.append(zoomOut,zoomValue,zoomIn,btn('Показать всё','mx-zoom-fit',()=>{mapScroll.dataset.autoFit='false';fitMap();}),expandButton,el('span','mx-zoom-hint','Ctrl / ⌘ + колесо'));
     function setZoom(value,anchor){
       const next=Math.max(.05,Math.min(2,value));
       const x=anchor?.x??mapScroll.clientWidth/2,y=anchor?.y??mapScroll.clientHeight/2;

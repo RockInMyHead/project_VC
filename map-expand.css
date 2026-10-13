@@ -1,0 +1,100 @@
+/* Expand the map surface without changing the tree or removing the time lens. */
+.matrix28 .mx-zoom-bar .mx-map-expand{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  min-width:112px;
+  margin-left:7px;
+  padding:0 12px;
+  border-color:var(--palette-primary);
+  background:var(--palette-primary);
+  color:#fff;
+  font-size:12px;
+  font-weight:750;
+  white-space:nowrap;
+}
+.matrix28 .mx-zoom-bar .mx-map-expand::before{
+  content:'';
+  display:block;
+  width:11px;
+  height:11px;
+  border:2px solid currentColor;
+  border-radius:2px;
+}
+.matrix28 .mx-zoom-bar .mx-map-expand:hover{background:#4e7336;color:#fff}
+.matrix28 .mx-zoom-bar .mx-map-expand:focus-visible{outline:3px solid var(--palette-sage);outline-offset:2px}
+html[data-theme="dark"] .matrix28 .mx-zoom-bar .mx-map-expand{background:var(--palette-primary);color:#14200f;border-color:var(--palette-primary)}
+html[data-theme="dark"] .matrix28 .mx-zoom-bar .mx-map-expand:hover{background:var(--palette-sage)}
+body:has(.mx-map-expanded){overflow:hidden}
+body.matrix28-page .matrix28.mx-map-expanded{
+  position:fixed;
+  inset:0;
+  z-index:100;
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  grid-template-rows:minmax(0,1fr) auto;
+  gap:10px;
+  width:100vw;
+  max-width:none;
+  height:100dvh!important;
+  min-height:0;
+  margin:0;
+  padding:12px clamp(12px,2vw,30px) max(12px,env(safe-area-inset-bottom));
+  overflow:hidden;
+  background:var(--palette-canvas);
+  color:var(--palette-ink);
+}
+.matrix28.mx-map-expanded>.mx-top,
+.matrix28.mx-map-expanded>.mx-hero,
+.matrix28.mx-map-expanded>.mx-section-tabs,
+.matrix28.mx-map-expanded>.mx-workflow,
+.matrix28.mx-map-expanded>.mx-utility,
+.matrix28.mx-map-expanded>.mx-extra{display:none!important}
+body.matrix28-page .matrix28.mx-map-expanded>.mx-primary{
+  display:grid!important;
+  grid-row:1!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  width:100%;
+  height:100%;
+  min-height:0;
+  margin:0;
+}
+.matrix28.mx-map-expanded .mx-inspector{display:none!important}
+body.matrix28-page .matrix28.mx-map-expanded .mx-graph{
+  display:flex;
+  flex-direction:column;
+  width:100%;
+  height:100%!important;
+  min-height:0;
+  align-self:stretch;
+}
+body.matrix28-page .matrix28.mx-map-expanded .mx-map-scroll{
+  flex:1 1 auto;
+  width:100%;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none;
+  overflow:auto;
+  scrollbar-width:thin;
+  touch-action:pan-x pan-y;
+}
+body.matrix28-page .matrix28.mx-map-expanded>.mx-measures{
+  display:block!important;
+  grid-row:2!important;
+  min-width:0;
+  max-height:min(28dvh,210px);
+  margin:0;
+  padding:0;
+  overflow-y:auto;
+}
+.matrix28.mx-map-expanded .mx-ugt-scale{display:none!important}
+.matrix28.mx-map-expanded .mx-timeline{margin:0!important}
+@media(max-width:760px){
+  body.matrix28-page .matrix28.mx-map-expanded{gap:7px;padding:8px 8px max(8px,env(safe-area-inset-bottom))!important}
+  body.matrix28-page .matrix28.mx-map-expanded .mx-graph-header{padding:8px 10px}
+  body.matrix28-page .matrix28.mx-map-expanded .mx-zoom-bar{padding:7px 9px}
+  .matrix28.mx-map-expanded .mx-zoom-hint{display:none}
+  body.matrix28-page .matrix28.mx-map-expanded>.mx-measures{max-height:28dvh}
+  .matrix28 .mx-zoom-bar .mx-map-expand{min-width:94px;margin-left:2px;padding:0 8px}
+}
