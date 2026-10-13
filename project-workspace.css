@@ -75,3 +75,21 @@
   .matrix28 .mx-measures{gap:10px;margin-top:12px}
   .matrix28 .mx-measures>.mx-ugt-scale,.matrix28 .mx-measures>.mx-timeline{margin:0}
 }
+
+/* Event details are long-form pages. The fixed-height tree workspace must not
+   clip their criteria, materials or media preview. */
+@media (min-width:1100px) and (min-height:720px){
+  body.matrix28-page:has(.event-page) #workspace>main{
+    overflow-x:hidden;
+    overflow-y:auto;
+    overscroll-behavior-y:contain;
+    scrollbar-gutter:stable;
+  }
+  body.matrix28-page:has(.event-page) .matrix28.event-page{
+    display:block;
+    height:auto;
+    min-height:100%;
+    overflow:visible;
+    padding-bottom:48px;
+  }
+}
