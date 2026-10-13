@@ -144,8 +144,9 @@ def main():
                 db.execute("UPDATE projects SET status='active',last_published_at=?,updated_at=? WHERE id=?",(now,now,project['id']))
                 src_id=db.execute('SELECT id FROM stages WHERE public_id=?',(created['stage_ids'][str(source_stage)],)).fetchone()['id']
                 add_material(db,src_id,founder['id'],spec['attachment'],'Авторская схема дорожной карты','image/jpeg')
-                if spec['code']=='GLUTEN-FREE-YEAST':
+                if spec['code']=='AGCT-HIV':
                     add_material(db,src_id,founder['id'],'lab-closeup.mp4','Лабораторная работа — иллюстративное видео (крупный план)','video/mp4')
+                    add_material(db,src_id,founder['id'],'agct-portrait.jpg','Портрет участника проекта','image/jpeg')
                 db.execute("INSERT INTO audit_log(public_id,actor_id,action,entity_type,entity_public_id,metadata_json) VALUES(?,?,'project.published','project',?,?)",
                            (public_id('aud'),admin['id'],created['public_id'],json.dumps({'source':'user-supplied roadmap','stage_count':len(stages)},ensure_ascii=False)))
                 print(f"Создан {spec['code']}: {len(stages)} этапов, {created['public_id']}")
