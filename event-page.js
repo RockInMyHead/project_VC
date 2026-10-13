@@ -25,7 +25,7 @@ const EventPage=(()=>{
     if(stage.choices?.length){const choices=section('Варианты результата','');choices.lastChild.remove();stage.choices.forEach((text,index)=>{const row=el('label','event-choice'),radio=el('input');radio.type='radio';radio.disabled=true;radio.checked=stage.selected_choice===index;row.append(radio,el('span','',text));choices.append(row);});}
     if(stage.attention_note)section('Требует внимания',stage.attention_note);
     const materials=section('Материалы события','');materials.lastChild.remove();
-    WorkflowUI.materials(materials,{...data,materials:data.materials.filter(m=>m.stage_public_id===id),stages:[stage]});
+    WorkflowUI.materials(materials,{...data,materials:data.materials.filter(m=>m.stage_public_id===id),stages:[stage]},{inline:true});
     side.append(el('span','event-kicker','РЕЗУЛЬТАТ СОБЫТИЯ'),el('h2','',stage.outcome?outcomes[stage.outcome]:'Итог ещё не подведён'));
     if(stage.outcome){side.classList.add(stage.outcome);side.append(el('p','event-long-text',stage.outcome_note),el('small','event-outcome-date',`Итог сохранён ${date(stage.outcome_at)}`));}
     else side.append(el('p','event-empty','Основатель подведёт итог после завершения исследования.'));

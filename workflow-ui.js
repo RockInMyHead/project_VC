@@ -95,7 +95,12 @@ const WorkflowUI = (() => {
   ],(v,k)=>command(data,s?'stage-update':'stages',{...v,stage_id:s?.public_id},k),'Сохранить',`stage:${data.project.public_id}:${s?.public_id||'new'}`);}
   function stageActions(host,data,s){if(!data.can_edit)return;const row=el('div',undefined,'workflow-buttons');row.append(btn('Изменить',()=>stage(data,s)),btn('Удалить',()=>dialog('Удалить этап? Дочерние этапы сохранятся.',[],(v,k)=>command(data,'stage-delete',{stage_id:s.public_id},k),'Удалить')));host.append(row);}
   async function download(data,m){const response=await fetch(`/api/projects/${data.project.public_id}/materials/${m.public_id}/download`,{headers:{Authorization:`Bearer ${localStorage.getItem('bokToken')}`}});if(!response.ok){const error=await response.json().catch(()=>({}));throw new Error(error.message||'Не удалось скачать файл.');}const url=URL.createObjectURL(await response.blob());const a=el('a');a.href=url;a.download=m.title;a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);}
-  function materials(host,data){
+  async function materialBlobUrl(data,m){
+    const response=await fetch(`/api/projects/${encodeURIComponent(data.project.public_id)}/materials/${encodeURIComponent(m.public_id)}/download`,{headers:{Authorization:`Bearer ${localStorage.getItem('bokToken')}`}});
+    if(!response.ok)throw new Error('Не удалось открыть материал.');
+    return URL.createObjectURL(await response.blob());
+  }
+  function materials(host,data,{inline=false}={}){
     if(data.can_edit)host.append(btn('Добавить файл',()=>{
       const controller=new AbortController();
       const d=dialog('Материал к этапу (до 50 МБ)',[{name:'stage_id',label:'Этап',options:data.stages.map(s=>[s.public_id,s.title]),required:true},{name:'file',label:'Файл',type:'file',required:true}],async(v)=>{
@@ -119,16 +124,38 @@ const WorkflowUI = (() => {
       d.addEventListener('close',()=>controller.abort(),{once:true});
     }));
     if(!data.materials.length)host.append(el('p','Материалов пока нет.'));
+    const gallery=inline&&data.materials.some(m=>m.mime_type.startsWith('image/'))?el('div',undefined,'workflow-photo-gallery'):null;
+    if(gallery)host.append(gallery);
     data.materials.forEach(m=>{
       const row=el('div',undefined,'workflow-row');
+      const isImage=m.mime_type.startsWith('image/'),isVideo=m.mime_type.startsWith('video/');
+      if(inline&&(isImage||isVideo)){
+        row.classList.add(isImage?'workflow-photo-card':'workflow-video-card');
+        const media=el(isVideo?'video':'img',undefined,'workflow-media-preview');
+        if(isVideo){media.controls=true;media.playsInline=true;media.preload='metadata';}
+        else {media.alt=m.title;media.loading='lazy';}
+        row.append(media);
+        let url=null;
+        materialBlobUrl(data,m).then(value=>{
+          if(!row.isConnected){URL.revokeObjectURL(value);return;}
+          url=value;media.src=url;
+        }).catch(()=>row.append(el('p','Не удалось открыть материал. Попробуйте скачать файл.','workflow-media-error')));
+        media.onerror=()=>{
+          if(!row.querySelector('.workflow-media-error'))row.append(el('p','Не удалось воспроизвести материал. Скачайте файл, чтобы открыть его.','workflow-media-error'));
+        };
+        const observer=new MutationObserver(()=>{
+          if(row.isConnected)return;
+          if(url)URL.revokeObjectURL(url);
+          observer.disconnect();
+        });
+        observer.observe(document.body,{childList:true,subtree:true});
+      }
       row.append(el('span',`${m.title} · ${Math.ceil(m.byte_size/1024)} КБ`));
-      if(m.mime_type.startsWith('video/')||m.mime_type.startsWith('image/')){
+      if(!inline&&(isVideo||isImage)){
         let preview=null,url=null;
         row.append(btn('Посмотреть',()=>run(async()=>{
           if(preview){preview.remove();row.querySelector('.workflow-media-error')?.remove();preview=null;URL.revokeObjectURL(url);url=null;return;}
-          const response=await fetch(`/api/projects/${encodeURIComponent(data.project.public_id)}/materials/${encodeURIComponent(m.public_id)}/download`,{headers:{Authorization:`Bearer ${localStorage.getItem('bokToken')}`}});
-          if(!response.ok)throw new Error('Не удалось открыть материал.');
-          url=URL.createObjectURL(await response.blob());
+          url=await materialBlobUrl(data,m);
           preview=el(m.mime_type.startsWith('video/')?'video':'img',undefined,'workflow-media-preview');
           if(preview.tagName==='VIDEO'){
             preview.controls=true;preview.playsInline=true;preview.preload='metadata';
@@ -145,7 +172,7 @@ const WorkflowUI = (() => {
       }
       row.append(btn('Скачать',()=>run(()=>download(data,m))));
       if(data.can_edit)row.append(btn('Удалить',()=>dialog('Удалить материал?',[],(v,k)=>command(data,'material-delete',{material_id:m.public_id},k),'Удалить')));
-      host.append(row);
+      (inline&&isImage?gallery:host).append(row);
     });
   }
   function team(host,data){
