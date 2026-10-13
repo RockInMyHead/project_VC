@@ -16,6 +16,7 @@
       <nav>
         <button class="is-active" data-section="overview">Обзор <b>01</b></button>
         <button data-section="users">Пользователи <b id="usersBadge">0</b></button>
+        <button data-section="invites">QR для инвесторов <b>↗</b></button>
         <button data-section="registrations">Заявки <b id="requestsBadge">0</b></button>
         <button data-section="projects">Проекты <b id="projectsBadge">0</b></button>
         <button data-section="audit">Аудит действий <b id="auditBadge">0</b></button>
@@ -40,6 +41,8 @@
 
       <section class="admin-view" data-view="users"><div class="view-toolbar"><label>Поиск<input id="adminUserSearch" type="search" placeholder="Имя, email или организация"></label><select id="roleFilter"><option value="all">Все роли</option><option value="investor">Инвесторы</option><option value="founder">Основатели</option><option value="fund_staff">Сотрудники фонда</option><option value="super_admin">Администраторы</option></select><button class="admin-primary" data-new-user>Создать пользователя</button></div><div class="admin-table-wrap"><table><thead><tr><th>Пользователь</th><th>Роль</th><th>Организация</th><th>Доступ</th><th>Последний вход</th><th></th></tr></thead><tbody id="usersTable"></tbody></table></div></section>
 
+      <section class="admin-view" data-view="invites"><div class="invite-heading"><div><h2>Вход инвестора по QR</h2><p>Каждый новый телефон получает отдельный кабинет. Повторное сканирование на том же телефоне возвращает в него.</p></div></div><form id="inviteForm" class="invite-form"><label>Срок действия<select name="days"><option value="1">1 день</option><option value="7" selected>7 дней</option><option value="30">30 дней</option></select></label><label>Максимум новых кабинетов<input name="max_uses" type="number" min="1" max="500" value="100" required></label><button type="submit" class="admin-primary">Создать QR</button></form><p id="inviteMessage" role="status"></p><div id="inviteResult" class="invite-result" hidden><canvas id="inviteCanvas" width="300" height="300" aria-label="QR-код для входа инвестора"></canvas><div><strong>QR готов</strong><p>Покажите код участникам или отправьте ссылку. Она выдаёт доступ инвестора до указанной даты или достижения лимита.</p><input id="inviteLink" readonly aria-label="Ссылка приглашения инвестора"><div class="invite-actions"><button type="button" id="inviteCopy">Скопировать ссылку</button><button type="button" id="inviteDownload">Скачать PNG</button></div></div></div><h3 class="invite-list-title">Созданные приглашения</h3><div id="inviteList" class="invite-list"></div></section>
+
       <section class="admin-view" data-view="registrations"><div class="request-list" id="registrationList"></div></section>
 
       <section class="admin-view" data-view="projects"><div class="project-admin-grid" id="adminProjects"></div></section>
@@ -53,6 +56,6 @@
   </div>
 
   <div class="admin-toast" id="adminToast"></div>
-  <script src="./workflow-ui.js?v=compare2"></script><script src="./admin.js?v=logs-1"></script><script src="./mobile-nav.js?v=1"></script>
+  <script src="./workflow-ui.js?v=compare2"></script><script src="./qrcodegen.js?v=1"></script><script src="./admin.js?v=investor-qr-1"></script><script src="./mobile-nav.js?v=1"></script>
 </body>
 </html>

@@ -6,7 +6,7 @@ const accessNames={active:'Активен',blocked:'Заблокирован',ar
 const {el,btn,dialog,run}=WorkflowUI;
 async function api(path,options={}){const response=await fetch(path,{...options,headers:{'Content-Type':'application/json',Authorization:`Bearer ${localStorage.getItem('bokToken')}`}});const data=await response.json();if(response.status===401){localStorage.removeItem('bokToken');location.replace('./index.html#auth');}if(!response.ok)throw new Error(data.message||'Не удалось выполнить действие.');return data;}
 function toast(message){$('#adminToast').textContent=message;$('#adminToast').classList.add('is-visible');setTimeout(()=>$('#adminToast').classList.remove('is-visible'),4000);}
-function showSection(name){$$('.admin-view').forEach(v=>v.classList.toggle('is-active',v.dataset.view===name));$$('[data-section]').forEach(b=>b.classList.toggle('is-active',b.dataset.section===name));$('#sectionTitle').textContent=({overview:'Обзор платформы',users:'Пользователи',registrations:'Заявки на регистрацию',projects:'Все проекты',audit:'Аудит действий',system:'Состояние системы',logs:'Логи приложения'})[name];if(name==='logs')loadLogs();if(name==='audit')loadAudit(true).catch(e=>toast(e.message));if(name==='system')loadSystemActivity();}
+function showSection(name){$$('.admin-view').forEach(v=>v.classList.toggle('is-active',v.dataset.view===name));$$('[data-section]').forEach(b=>b.classList.toggle('is-active',b.dataset.section===name));$('#sectionTitle').textContent=({overview:'Обзор платформы',users:'Пользователи',invites:'QR для инвесторов',registrations:'Заявки на регистрацию',projects:'Все проекты',audit:'Аудит действий',system:'Состояние системы',logs:'Логи приложения'})[name];if(name==='invites')loadInvites();if(name==='logs')loadLogs();if(name==='audit')loadAudit(true).catch(e=>toast(e.message));if(name==='system')loadSystemActivity();}
 async function post(action,data,key){await api('/api/admin/'+action,{method:'POST',body:JSON.stringify({...data,request_key:key})});await refresh();}
 const credentials=[{name:'phone',label:'Телефон основателя',type:'tel',placeholder:'+79991234567',autocomplete:'off',pattern:'\\+[1-9][0-9]{9,14}',required:true},{name:'password',label:'Пароль для первого входа',type:'password',placeholder:'Не менее 12 символов',autocomplete:'new-password',minLength:12,required:true}];
 function createUser(){dialog('Создать пользователя',[{name:'full_name',label:'Имя и фамилия',required:true},{name:'email',label:'Email',type:'email',required:true},{name:'organization',label:'Организация',required:true},{name:'role',label:'Роль',options:Object.entries(roleNames)},...credentials],(v,k)=>post('users',v,k),'Создать');}
@@ -158,6 +158,42 @@ async function loadLogs(){
   }catch(error){status.textContent=error.message;}
 }
 async function refresh(){const [overview,u,r,p,a]=await Promise.all([api('/api/admin/overview'),api('/api/admin/users'),api('/api/admin/registrations'),api('/api/projects'),api('/api/admin/audit')]);users=u.items;registrations=r.items;projects=p.items;audit=a.items;const metrics=$('#adminMetrics');metrics.replaceChildren();[['Пользователи',overview.users],['Инвесторы',overview.investors],['Проекты',overview.projects],['На проверке',overview.reviews],['Новые заявки',overview.pending_registrations],['Аудит за сутки',overview.audit_today]].forEach(([title,value])=>{const card=el('article');card.append(el('span',title),el('strong',value));metrics.append(card);});$('#usersBadge').textContent=overview.users;$('#requestsBadge').textContent=overview.pending_registrations;$('#projectsBadge').textContent=overview.projects;$('#auditBadge').textContent=overview.audit_today;$('#taskRequests').textContent=overview.pending_registrations;$('#taskReviews').textContent=overview.reviews;renderUsers();renderRegistrations();renderProjects();renderAuditPreview();}
+async function loadInvites(){
+  const host=$('#inviteList');host.replaceChildren();
+  try{
+    const {items}=await api('/api/admin/investor-invites');
+    if(!items.length){host.append(el('p','Пока нет приглашений.'));return;}
+    for(const invite of items){
+      const row=el('article');const info=el('div');const now=Date.now();
+      const active=!invite.revoked_at&&new Date(invite.expires_at).getTime()>now&&invite.used_count<invite.max_uses;
+      info.append(el('strong',active?'Активно':invite.revoked_at?'Отключено':'Завершено'),el('p',`${invite.used_count} из ${invite.max_uses} кабинетов · до ${new Date(invite.expires_at).toLocaleString('ru-RU')}`));
+      row.append(info);
+      if(active)row.append(btn('Отключить',async()=>{if(!confirm('Отключить QR для новых входов?'))return;try{await api('/api/admin/investor-invites/revoke',{method:'POST',body:JSON.stringify({invite_id:invite.public_id})});await loadInvites();}catch(e){toast(e.message);}}));
+      host.append(row);
+    }
+  }catch(error){host.append(el('p',error.message));}
+}
+function drawInviteQr(url){
+  const qr=qrcodegen.QrCode.encodeText(url,qrcodegen.QrCode.Ecc.HIGH);
+  const canvas=$('#inviteCanvas'),context=canvas.getContext('2d');
+  const cell=Math.floor(canvas.width/(qr.size+8)),size=cell*(qr.size+8),offset=Math.floor((canvas.width-size)/2);
+  context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);
+  context.fillStyle='#17281d';
+  for(let y=0;y<qr.size;y++)for(let x=0;x<qr.size;x++)if(qr.getModule(x,y))context.fillRect(offset+(x+4)*cell,offset+(y+4)*cell,cell,cell);
+}
+$('#inviteForm').onsubmit=async event=>{
+  event.preventDefault();const button=event.currentTarget.querySelector('button[type="submit"]');button.disabled=true;$('#inviteMessage').textContent='Создаём приглашение…';
+  try{
+    const values=Object.fromEntries(new FormData(event.currentTarget));
+    const invite=await api('/api/admin/investor-invites',{method:'POST',body:JSON.stringify(values)});
+    const url=new URL('./invite.html',location.href);url.hash=invite.code;
+    $('#inviteLink').value=url.href;drawInviteQr(url.href);$('#inviteResult').hidden=false;
+    $('#inviteMessage').textContent='Сохраните QR или ссылку сейчас: после обновления страницы секретную ссылку нельзя будет открыть повторно.';
+    await loadInvites();
+  }catch(error){$('#inviteMessage').textContent=error.message;}finally{button.disabled=false;}
+};
+$('#inviteCopy').onclick=async()=>{try{await navigator.clipboard.writeText($('#inviteLink').value);toast('Ссылка скопирована.');}catch{toast('Не удалось скопировать. Выделите ссылку в поле.');}};
+$('#inviteDownload').onclick=()=>{const link=document.createElement('a');link.download='bokobok-investor-qr.png';link.href=$('#inviteCanvas').toDataURL('image/png');link.click();};
 function openProject(id){location.href='./index.html#project/'+encodeURIComponent(id);}
 $('#adminNotifications').onclick=()=>run(WorkflowUI.notifications);
 async function init(){if(!localStorage.getItem('bokToken'))return location.replace('./index.html#auth');try{const {user}=await api('/api/auth/me');if(user.role!=='super_admin')return location.replace('./index.html#dashboard');$('#adminName').textContent=user.full_name;await refresh();const h=await api('/api/health');$('#apiStatus').textContent=h.status==='ok'?'Работает':'Ошибка';$('#dbStatus').textContent=h.database==='ok'?'Работает':'Ошибка';$('#currentTime').textContent=new Date().toLocaleTimeString('ru-RU');$('#loading').hidden=true;$('#adminApp').hidden=false;}catch(e){$('#loading').textContent=e.message;const retry=btn('Повторить',init);$('#loading').append(retry);}}

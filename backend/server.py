@@ -54,6 +54,50 @@ def normalize_project_code(value: str) -> str:
     return "".join(char for char in value if char.isalnum() or char in "_-")[:24]
 
 
+def redeem_investor_invite(db: sqlite3.Connection, code: str, browser_key: str, ip: str, agent: str) -> dict:
+    """Create one investor per browser and invitation, then issue a normal session."""
+    if not re.fullmatch(r'[A-Za-z0-9_-]{40,100}', code) or not re.fullmatch(r'[A-Za-z0-9_-]{30,100}', browser_key):
+        raise workflow.Problem(422, 'Недействительная ссылка приглашения.')
+    now = utc_now()
+    invite = db.execute('SELECT * FROM investor_invites WHERE token_hash=?', (hash_token(code),)).fetchone()
+    if not invite:
+        raise workflow.Problem(410, 'Приглашение не найдено.')
+    browser_hash = hash_token(browser_key)
+    existing = db.execute('''SELECT u.* FROM investor_invite_claims c JOIN users u ON u.id=c.user_id
+        WHERE c.invite_id=? AND c.browser_hash=?''', (invite['id'], browser_hash)).fetchone()
+    if existing and existing['status'] != 'active':
+        raise workflow.Problem(403, 'Доступ к этому кабинету закрыт. Обратитесь к администратору.')
+    if not existing:
+        if invite['revoked_at'] or invite['expires_at'] <= now:
+            raise workflow.Problem(410, 'Срок действия приглашения истёк или оно отключено.')
+        if invite['used_count'] >= invite['max_uses']:
+            raise workflow.Problem(410, 'Лимит приглашений исчерпан.')
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat(timespec='milliseconds').replace('+00:00','Z')
+        recent = db.execute("SELECT COUNT(*) FROM audit_log WHERE action='auth.qr_join' AND ip_address=? AND created_at>?", (ip, cutoff)).fetchone()[0]
+        if recent >= 10:
+            raise workflow.Problem(429, 'Слишком много входов с этого устройства. Попробуйте позже.')
+        user_id = public_id('usr')
+        email = f"qr-{user_id[4:]}@guest.bokobok.invalid"
+        name = f"Инвестор {invite['used_count'] + 1:03d}"
+        cursor = db.execute('''INSERT INTO users(public_id,role_id,full_name,email,phone,organization,password_hash,two_factor_enabled)
+            VALUES(?,(SELECT id FROM roles WHERE code='investor'),?,?,NULL,'',?,0)''',
+            (user_id, name, email, hash_password(secrets.token_urlsafe(48))))
+        db.execute('INSERT INTO investor_invite_claims(invite_id,user_id,browser_hash) VALUES(?,?,?)',
+            (invite['id'], cursor.lastrowid, browser_hash))
+        db.execute('UPDATE investor_invites SET used_count=used_count+1 WHERE id=?', (invite['id'],))
+        existing = db.execute('SELECT * FROM users WHERE id=?', (cursor.lastrowid,)).fetchone()
+        db.execute("INSERT INTO audit_log(public_id,actor_id,action,entity_type,entity_public_id,ip_address,metadata_json) VALUES(?,?,'auth.qr_join','user',?,?,?)",
+            (public_id('aud'), existing['id'], existing['public_id'], ip, json.dumps({'invite_id':invite['public_id']})))
+    raw_token = secrets.token_urlsafe(32)
+    session_id = public_id('ses')
+    expires = (datetime.now(timezone.utc) + timedelta(hours=12)).isoformat(timespec='milliseconds').replace('+00:00','Z')
+    db.execute('INSERT INTO auth_sessions(public_id,user_id,token_hash,ip_address,user_agent,expires_at) VALUES(?,?,?,?,?,?)',
+        (session_id, existing['id'], hash_token(raw_token), ip, agent[:500], expires))
+    db.execute('UPDATE users SET last_login_at=? WHERE id=?', (now, existing['id']))
+    return {'token':raw_token,'expires_at':expires,'user':{'public_id':existing['public_id'],
+        'full_name':existing['full_name'],'role':'investor'}}
+
+
 def audit_entries(db: sqlite3.Connection, query: str) -> dict:
     params = parse_qs(query)
     value = lambda key: params.get(key, [''])[0].strip()
@@ -276,7 +320,7 @@ class ApiHandler(SimpleHTTPRequestHandler):
             return peer
 
     def end_headers(self):
-        if urlparse(self.path).path in ('/', '/index.html', '/admin.html'):
+        if urlparse(self.path).path in ('/', '/index.html', '/admin.html', '/invite.html'):
             self.send_header('Cache-Control', 'no-store')
         self.send_header('X-Content-Type-Options','nosniff')
         self.send_header('Referrer-Policy','same-origin')
@@ -546,6 +590,10 @@ class ApiHandler(SimpleHTTPRequestHandler):
                     return self._json(200, counts)
                 if path == "/api/admin/activity":
                     return self._json(200, admin_activity(db))
+                if path == '/api/admin/investor-invites':
+                    rows = db.execute('''SELECT public_id,max_uses,used_count,expires_at,revoked_at,created_at
+                        FROM investor_invites ORDER BY id DESC LIMIT 50''').fetchall()
+                    return self._json(200, {'items':[dict(row) for row in rows]})
                 if path == "/api/admin/users":
                     rows = db.execute("SELECT u.public_id,u.full_name,u.email,u.phone,u.organization,u.status,u.created_at,u.last_login_at,r.code role_code,r.name role_name FROM users u JOIN roles r ON r.id=u.role_id ORDER BY u.created_at DESC").fetchall()
                     items=[]
@@ -572,14 +620,14 @@ class ApiHandler(SimpleHTTPRequestHandler):
         # Only public application assets are served. Never expose source, DB or credentials.
         from urllib.parse import unquote
         clean = unquote(path)
-        allowed = {'/','/index.html','/admin.html','/preview.html','/favicon.ico'}
+        allowed = {'/','/index.html','/admin.html','/preview.html','/invite.html','/favicon.ico'}
         if clean not in allowed and not (clean.count('/')==1 and clean.endswith(('.js','.css')) and (ROOT/clean[1:]).is_file()):
             return self._json(404, {'error':'not_found'})
         return super().do_GET()
 
     def do_HEAD(self):
         path=urlparse(self.path).path
-        if path not in ('/','/index.html','/admin.html','/preview.html','/favicon.ico') and not (path.count('/')==1 and path.endswith(('.js','.css'))):
+        if path not in ('/','/index.html','/admin.html','/preview.html','/invite.html','/favicon.ico') and not (path.count('/')==1 and path.endswith(('.js','.css'))):
             self.send_error(404);return
         super().do_HEAD()
 
@@ -594,6 +642,46 @@ class ApiHandler(SimpleHTTPRequestHandler):
         except (ValueError, json.JSONDecodeError) as exc:
             return self._json(400, {"error": "invalid_request"})
         if not isinstance(data,dict): return self._json(422,{'error':'validation_failed'})
+        if path == '/api/auth/investor-invite':
+            with closing(connect()) as db:
+                try:
+                    with transaction(db):
+                        result = redeem_investor_invite(db, str(data.get('code','')),
+                            str(data.get('browser_key','')), self._client_ip(), self.headers.get('User-Agent',''))
+                    return self._json(200, result)
+                except workflow.Problem as error:
+                    return self._json(error.status, {'error':'invite_unavailable','message':error.message})
+        if path == '/api/admin/investor-invites':
+            with closing(connect()) as db:
+                user = self._bearer_user(db)
+                if not user or user['role_code'] != 'super_admin':
+                    return self._json(403, {'error':'forbidden','message':'Нет доступа к приглашениям.'})
+                try:
+                    days = int(data.get('days',7));max_uses = int(data.get('max_uses',100))
+                except (TypeError,ValueError):
+                    return self._json(422,{'error':'validation_failed','message':'Проверьте срок и количество входов.'})
+                if not 1 <= days <= 30 or not 1 <= max_uses <= 500:
+                    return self._json(422,{'error':'validation_failed','message':'Срок: 1–30 дней, входов: 1–500.'})
+                code = secrets.token_urlsafe(32)
+                invite_id = public_id('inv')
+                expires = (datetime.now(timezone.utc)+timedelta(days=days)).isoformat(timespec='milliseconds').replace('+00:00','Z')
+                with transaction(db):
+                    db.execute('INSERT INTO investor_invites(public_id,token_hash,created_by,max_uses,expires_at) VALUES(?,?,?,?,?)',
+                        (invite_id,hash_token(code),user['id'],max_uses,expires))
+                    self._audit(db,user['id'],'admin.invite_created','user',invite_id,{'max_uses':max_uses,'days':days})
+                return self._json(201, {'public_id':invite_id,'code':code,'expires_at':expires,'max_uses':max_uses})
+        if path == '/api/admin/investor-invites/revoke':
+            with closing(connect()) as db:
+                user = self._bearer_user(db)
+                if not user or user['role_code'] != 'super_admin':
+                    return self._json(403, {'error':'forbidden','message':'Нет доступа к приглашениям.'})
+                invite_id = str(data.get('invite_id',''))
+                with transaction(db):
+                    result = db.execute('UPDATE investor_invites SET revoked_at=? WHERE public_id=? AND revoked_at IS NULL',
+                        (utc_now(),invite_id))
+                    if result.rowcount:
+                        self._audit(db,user['id'],'admin.invite_revoked','user',invite_id,{})
+                return self._json(200, {'ok':bool(result.rowcount)})
         scalar_keys=('identity','password','current_password','new_password','challenge_id','code','email','full_name','organization','phone','role','status','user_id','project_id','founder_id','manager_id','member_role','request_id','stage_id','parent','owner','notification_id','recipient_id','question_id','material_id','title','body','description','criteria_text','attention_note','outcome','outcome_note','name','summary','field','region','due_at','request_key','decision','comment','content')
         if any(k in data and data[k] is not None and not isinstance(data[k],str) for k in scalar_keys):
             return self._json(422,{'error':'validation_failed'})
