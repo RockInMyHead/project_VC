@@ -37,6 +37,7 @@ python3 -m unittest -v tests.test_database
 
 ## Документация
 
+- [Полная документация проекта](docs/PROJECT.md)
 - [Архитектура, модель доступа и API](docs/architecture-api.md)
 - [Эксплуатация, SMS, резервные копии и восстановление](docs/operations.md)
 - [План и покрытие ТЗ](IMPLEMENTATION_PLAN.md)
